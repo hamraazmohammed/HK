@@ -76,11 +76,6 @@ Photo Booth overlay + a floating circular face-photo
 You have accomplished nothing popup 
 
 # Diagrams
- USER INPUT ──┐                        ┌── FX CANVAS (beams, particles, confetti)
- (click/drag) ├─→ EVENT SYSTEM ──→ CHAIN ENGINE ──┤
- WEBCAM ──────┤   (random events,  ──→ AUDIO SYNTH (Web Audio, cooldowns)
- CURSOR ──────┘    scheduler, budget) └→ DOM BUTTON LAYER (spring physics, moods,
-                                          personalities, localStorage persistence)
 
 <img width="1224" height="1285" alt="councilofbuttons flowchart" src="https://github.com/user-attachments/assets/7d3c1c59-e150-440c-b6c1-a7cf08e3df15" />
 
