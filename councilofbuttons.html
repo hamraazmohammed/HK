@@ -1,0 +1,1847 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>THE COUNCIL OF BUTTONS</title>
+<style>
+:root{--ink:#e8e4da}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{width:100%;height:100%;overflow:hidden;background:#0b0b10;font-family:Georgia,serif;color:var(--ink);user-select:none;-webkit-user-select:none}
+#world{position:fixed;inset:0;overflow:hidden;cursor:grab}
+#world.dragging{cursor:grabbing}
+#camera{position:absolute;left:0;top:0;width:3600px;height:2400px;transform-origin:0 0;will-change:transform}
+#roomfx{position:absolute;inset:0;transform-origin:1800px 1200px;will-change:transform}
+#room{position:absolute;inset:0;border-radius:40px;
+ background:radial-gradient(900px 600px at 30% 25%,rgba(120,90,220,.10),transparent 60%),
+ radial-gradient(1100px 700px at 72% 70%,rgba(220,90,60,.08),transparent 60%),
+ radial-gradient(700px 500px at 55% 40%,rgba(60,160,190,.07),transparent 60%),
+ repeating-linear-gradient(0deg,rgba(255,255,255,.014) 0 2px,transparent 2px 90px),
+ repeating-linear-gradient(90deg,rgba(255,255,255,.014) 0 2px,transparent 2px 90px),
+ radial-gradient(1600px 1100px at 50% 45%,#17171f 0%,#101017 55%,#0b0b11 100%);
+ box-shadow:inset 0 0 240px rgba(0,0,0,.75);border:1px solid rgba(255,255,255,.05)}
+.roomGlyph{position:absolute;font-size:120px;opacity:.05;letter-spacing:20px}
+.roomNote{position:absolute;font-family:"Courier New",monospace;font-size:15px;opacity:.10;letter-spacing:3px}
+.ring{position:absolute;border:1px dashed rgba(255,255,255,.05);border-radius:50%;pointer-events:none}
+#fx{position:absolute;inset:0;pointer-events:none;z-index:50}
+#stage{position:absolute;inset:0;pointer-events:none;z-index:60}
+/* BUTTONS */
+.btn{position:absolute;z-index:10;cursor:pointer;will-change:transform}
+.lift{width:100%;height:100%;transition:transform .18s cubic-bezier(.34,1.56,.64,1),filter .25s;transform:translateY(var(--ly,0px)) rotate(var(--rot,0deg)) scale(var(--ls,1))}
+.btn.hov .lift{transform:translateY(calc(var(--ly,0px) - 4px)) rotate(var(--rot,0deg)) scale(calc(var(--ls,1)*1.05));filter:brightness(1.12)}
+.btn.pressed .lift{transform:translateY(0) rotate(var(--rot,0deg)) scale(.84);filter:brightness(.85)}
+.btn.gone{display:none}
+.btn.giant{width:380px!important;height:380px!important;z-index:70}
+.btn.awake{animation:awakePop .7s cubic-bezier(.34,1.8,.64,1)}
+@keyframes awakePop{0%{transform:scale(.2)}60%{transform:scale(1.25)}100%{transform:scale(1)}}
+.core{width:100%;height:100%;border-radius:50%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;text-align:center;position:relative;transition:box-shadow .2s,filter .3s,border-radius .4s;font-family:Georgia,serif;line-height:1.05}
+.ico{font-size:1.05em;filter:drop-shadow(0 1px 2px rgba(0,0,0,.5))}
+.lbl{font-size:.42em;font-weight:bold;letter-spacing:.04em;padding:0 8%;text-shadow:0 1px 2px rgba(0,0,0,.6);max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.numeral{position:absolute;top:calc(100% + 3px);left:50%;transform:translateX(-50%);font-family:"Courier New",monospace;font-size:10px;opacity:.5;letter-spacing:1px;pointer-events:none;transition:opacity .3s}
+.btn:hover .numeral{opacity:.95}
+body.no-labels .lbl{opacity:0}body.amnesia .lbl{opacity:0}
+body.amnesia .core::before{content:"???";font-family:"Courier New",monospace;font-size:.4em;opacity:.85}
+body.amnesia .numeral{opacity:0}
+body.frozen #roomfx{filter:saturate(.35) brightness(.85) hue-rotate(15deg)}
+body.sombre .core{filter:saturate(.25)!important}
+body.rainbow .core{animation:rainbowShift 1.2s linear infinite}
+@keyframes rainbowShift{0%{filter:hue-rotate(0)}100%{filter:hue-rotate(360deg)}}
+body.showNums .lbl{opacity:0}
+body.showNums .core::before{content:attr(data-num);font-family:"Courier New",monospace;font-size:.5em;opacity:.9}
+.btn .pupil{position:absolute;width:22%;height:22%;border-radius:50%;background:#111;left:39%;top:26%;opacity:.9;transition:transform .1s;box-shadow:0 0 0 2px rgba(255,255,255,.15)}
+.btn.chairman .core::after{content:"👑";position:absolute;top:-30%;left:50%;transform:translateX(-50%);font-size:.55em;filter:drop-shadow(0 2px 4px #000);animation:bob 1.6s ease-in-out infinite}
+@keyframes bob{0%,100%{transform:translateX(-50%) translateY(0)}50%{transform:translateX(-50%) translateY(-6px)}}
+.btn.veteran .core{border:4px solid #ffd76a!important;box-shadow:0 0 26px rgba(255,215,106,.75)!important}
+.btn.blush .core{filter:hue-rotate(90deg) saturate(1.4)!important}
+.btn.spawn{animation:spawnIn .55s cubic-bezier(.34,1.7,.64,1) backwards}
+@keyframes spawnIn{0%{transform:scale(0);opacity:0}70%{transform:scale(1.2)}100%{transform:scale(1);opacity:1}}
+.btn.despawn{animation:spawnIn .4s reverse forwards}
+@keyframes shiver{0%,100%{transform:translate(0,0)}25%{transform:translate(1.5px,-1px)}50%{transform:translate(-1.5px,1px)}75%{transform:translate(1px,1.5px)}}
+@keyframes wob{0%,100%{transform:rotate(-6deg)}50%{transform:rotate(6deg)}}
+@keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.07)}}
+@keyframes bounceA{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}
+@keyframes breathe{0%,100%{transform:scale(1)}50%{transform:scale(1.035)}}
+@keyframes angryP{0%,100%{transform:scale(1)}50%{transform:scale(1.09)}}
+@keyframes sag{0%,100%{transform:translateY(2px) rotate(4deg)}50%{transform:translateY(3px) rotate(5deg)}}
+@keyframes spinSlow{0%{transform:rotate(0)}100%{transform:rotate(360deg)}}
+@keyframes peek{0%,100%{transform:translateX(-4px)}50%{transform:translateX(4px)}}
+@keyframes lump{0%,100%{border-radius:44% 56% 52% 48%;transform:rotate(-3deg)}50%{border-radius:58% 42% 46% 54%;transform:rotate(3deg)}}
+@keyframes crazy{0%{transform:rotate(0) scale(1)}20%{transform:rotate(9deg) scale(.96)}45%{transform:rotate(-7deg) scale(1.05)}70%{transform:rotate(4deg) scale(.98)}100%{transform:rotate(0) scale(1)}}
+.a-shiver{animation:shiver .28s linear infinite}.a-wob{animation:wob 1.4s ease-in-out infinite}
+.a-pulse{animation:pulse 2s ease-in-out infinite}.a-bounce{animation:bounceA 1s ease-in-out infinite}
+.a-breathe{animation:breathe 3.4s ease-in-out infinite}.a-angry{animation:angryP .55s ease-in-out infinite}
+.a-sag{animation:sag 3s ease-in-out infinite}.a-spin{animation:spinSlow 12s linear infinite}
+.a-peek{animation:peek .8s ease-in-out infinite}.a-lump{animation:lump 2.2s ease-in-out infinite}
+.a-crazy{animation:crazy 1.7s ease-in-out infinite}
+/* PHOTOS */
+.photo{position:absolute;z-index:40;border-radius:50%;overflow:hidden;border:5px solid #d8d2c4;box-shadow:0 8px 22px rgba(0,0,0,.6),0 0 0 2px #55555f,0 0 18px rgba(255,255,255,.15);cursor:grab}
+.photo img{width:100%;height:100%;object-fit:cover;display:block;transform:scaleX(-1);pointer-events:none}
+.photo .plabel{position:absolute;left:50%;bottom:-24px;transform:translateX(-50%);font-family:"Courier New",monospace;font-size:10px;color:#e8e4da;background:rgba(10,10,16,.85);padding:2px 8px;border-radius:8px;white-space:nowrap;border:1px solid rgba(255,255,255,.2)}
+.photo:hover{filter:brightness(1.12)}
+.photo.drag{cursor:grabbing}
+.photo.pop{animation:photoPop .45s cubic-bezier(.34,1.8,.64,1)}
+@keyframes photoPop{0%{scale:1}50%{scale:1.25}100%{scale:1}}
+/* UI */
+#topbar{position:fixed;top:0;left:0;right:0;z-index:200;display:flex;align-items:center;gap:10px;padding:10px 14px;background:linear-gradient(180deg,rgba(8,8,12,.92),rgba(8,8,12,.55) 80%,transparent);pointer-events:none}
+#topbar>*{pointer-events:auto}
+#brand{font-weight:bold;font-size:15px;letter-spacing:3px;color:#d8d2c4;text-shadow:0 2px 6px #000}
+#brand small{display:block;font-size:9px;letter-spacing:2px;opacity:.5;font-weight:normal}
+.chip{font-family:"Courier New",monospace;font-size:11px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.14);color:#e8e4da;border-radius:6px;padding:5px 10px;cursor:pointer;letter-spacing:1px;transition:background .15s}
+.chip:hover{background:rgba(255,255,255,.16)}
+#demoBtn{border-color:#ffd76a66;color:#ffd76a}
+#stats{font-family:"Courier New",monospace;font-size:10px;opacity:.55;letter-spacing:1px;margin-left:auto}
+#volWrap{display:flex;align-items:center;gap:6px}
+#vol{width:80px;accent-color:#9d8cff}
+#ticker{position:fixed;left:14px;bottom:118px;z-index:200;font-family:"Courier New",monospace;font-size:11px;opacity:.6;letter-spacing:1px;max-width:420px;text-shadow:0 1px 3px #000;pointer-events:none}
+#sfxcap{position:fixed;left:50%;bottom:150px;transform:translateX(-50%);z-index:210;font-family:"Courier New",monospace;font-size:12px;color:#c9b8ff;opacity:0;letter-spacing:2px;pointer-events:none;text-shadow:0 1px 4px #000;transition:opacity .3s}
+#sfxcap.show{opacity:.85}
+#logwrap{position:fixed;left:14px;bottom:12px;z-index:200;width:430px;max-height:104px;overflow:hidden;pointer-events:none;-webkit-mask-image:linear-gradient(180deg,transparent,#000 30%);mask-image:linear-gradient(180deg,transparent,#000 30%)}
+#log{list-style:none;font-family:"Courier New",monospace;font-size:11px;line-height:1.5}
+#log li{opacity:.75;text-shadow:0 1px 3px #000}
+#log li b{color:#c9b8ff}
+#minimap{position:fixed;right:14px;bottom:14px;z-index:200;width:180px;height:120px;border:1px solid rgba(255,255,255,.16);border-radius:8px;background:rgba(10,10,16,.8);cursor:pointer}
+#minimap:hover{border-color:rgba(255,255,255,.4)}
+#inspector{position:fixed;right:14px;top:52px;z-index:210;width:250px;background:rgba(12,12,18,.94);border:1px solid rgba(255,255,255,.16);border-radius:10px;padding:12px 14px;font-size:12px;display:none;box-shadow:0 8px 30px rgba(0,0,0,.6)}
+#inspector h3{font-size:13px;margin-bottom:6px;letter-spacing:1px}
+#inspector .row{margin:3px 0;opacity:.85;font-family:"Courier New",monospace;font-size:11px}
+#inspector .quote{font-style:italic;opacity:.7;margin:8px 0;border-left:2px solid rgba(157,140,255,.5);padding-left:8px}
+#inspClose{position:absolute;top:6px;right:10px;cursor:pointer;opacity:.6}
+#inspClose:hover{opacity:1}
+#tip{position:fixed;z-index:300;pointer-events:none;background:rgba(10,10,16,.95);border:1px solid rgba(255,255,255,.2);border-radius:8px;padding:8px 11px;font-size:11px;font-family:"Courier New",monospace;max-width:240px;display:none;box-shadow:0 6px 20px rgba(0,0,0,.6);line-height:1.5}
+#tip b{color:#c9b8ff}
+#tip .fl{font-style:italic;opacity:.7}
+.speech{position:absolute;z-index:65;background:#f4f0e6;color:#1a1a22;font-family:Georgia,serif;font-size:13px;padding:8px 12px;border-radius:12px;max-width:200px;box-shadow:0 4px 14px rgba(0,0,0,.5);animation:speechIn .25s cubic-bezier(.34,1.6,.64,1)}
+.speech::after{content:"";position:absolute;bottom:-8px;left:24px;border:8px solid transparent;border-top-color:#f4f0e6;border-bottom:0}
+@keyframes speechIn{0%{transform:scale(0);opacity:0}100%{transform:scale(1);opacity:1}}
+.floaty{position:absolute;font-family:Georgia,serif;font-weight:bold;white-space:nowrap;pointer-events:none;text-shadow:0 2px 4px rgba(0,0,0,.8);animation:floatUp 1.6s ease-out forwards;z-index:62}
+.floaty.whisper{font-style:italic;font-weight:normal;font-size:13px;color:#bbb}
+@keyframes floatUp{0%{transform:translateY(0) scale(.7);opacity:0}12%{opacity:1;transform:translateY(-14px) scale(1.1)}100%{transform:translateY(-70px) scale(1);opacity:0}}
+#toastwrap{position:fixed;top:56px;left:50%;transform:translateX(-50%);z-index:400;display:flex;flex-direction:column;gap:6px;align-items:center;pointer-events:none}
+.toast{background:rgba(20,20,28,.95);border:1px solid rgba(255,255,255,.25);border-radius:20px;padding:8px 18px;font-size:13px;font-family:Georgia,serif;box-shadow:0 6px 24px rgba(0,0,0,.6);animation:toastIn .3s cubic-bezier(.34,1.6,.64,1)}
+@keyframes toastIn{0%{transform:translateY(-14px);opacity:0}100%{transform:translateY(0);opacity:1}}
+#secrets{position:fixed;left:14px;top:52px;z-index:205;font-family:"Courier New",monospace;font-size:10px;letter-spacing:1px;pointer-events:none}
+#secrets div{margin-bottom:3px;color:#ffd76a;text-shadow:0 1px 4px #000;opacity:.9}
+#flash{position:fixed;inset:0;background:#fff;opacity:0;pointer-events:none;z-index:350;transition:opacity .08s}
+#vignette{position:fixed;inset:0;pointer-events:none;z-index:150;box-shadow:inset 0 0 180px rgba(0,0,0,.55)}
+#dialogBack,#boothBack{position:fixed;inset:0;z-index:500;background:rgba(0,0,0,.55);display:none;align-items:center;justify-content:center}
+#dialog,#booth{background:linear-gradient(160deg,#1c1c26,#12121a);border:1px solid rgba(255,255,255,.2);border-radius:14px;max-width:460px;width:92%;padding:22px 24px;box-shadow:0 20px 60px rgba(0,0,0,.8);animation:toastIn .25s}
+#dialog h2,#booth h2{font-size:18px;letter-spacing:2px;margin-bottom:10px;color:#d8d2c4}
+#dialog .body{font-size:14px;line-height:1.55;opacity:.9;margin-bottom:16px}
+#dialog .btns,#booth .btns{display:flex;gap:8px;flex-wrap:wrap}
+#dialog .btns .chip,#booth .btns .chip{font-size:12px;padding:8px 14px}
+#booth p.hint{font-size:12px;opacity:.7;margin:10px 0 14px;line-height:1.5;font-family:"Courier New",monospace}
+#boothStage{width:320px;height:240px;margin:0 auto;background:#000;border-radius:10px;overflow:hidden;border:1px solid rgba(255,255,255,.2)}
+#pv{width:100%;height:100%;object-fit:cover;transform:scaleX(-1)}
+#intro{position:fixed;inset:0;z-index:900;background:radial-gradient(1000px 700px at 50% 45%,#191922,#08080c);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;cursor:pointer;transition:opacity .8s}
+#intro h1{font-size:clamp(26px,5vw,54px);letter-spacing:8px;color:#e8e4da;text-shadow:0 0 40px rgba(157,140,255,.35);text-align:center}
+#intro p{font-family:"Courier New",monospace;font-size:13px;opacity:.7;letter-spacing:2px;text-align:center;line-height:2}
+#intro .enter{border:1px solid rgba(255,255,255,.3);border-radius:30px;padding:12px 34px;font-family:"Courier New",monospace;letter-spacing:3px;font-size:13px;animation:pulse 2s infinite}
+.kbd{border:1px solid rgba(255,255,255,.3);border-radius:4px;padding:1px 6px;font-size:10px}
+</style>
+</head>
+<body>
+<div id="world"><div id="camera"><div id="roomfx">
+ <div id="room">
+  <div class="ring" style="left:1050px;top:650px;width:1500px;height:1500px"></div>
+  <div class="ring" style="left:1400px;top:1000px;width:800px;height:800px;border-style:solid;opacity:.6"></div>
+  <div class="roomGlyph" style="left:120px;top:90px">⬤</div>
+  <div class="roomGlyph" style="right:120px;top:90px">⬤</div>
+  <div class="roomGlyph" style="left:120px;bottom:90px">⬤</div>
+  <div class="roomGlyph" style="right:120px;bottom:90px">⬤</div>
+  <div class="roomNote" style="left:50%;top:30%;transform:translate(-50%,-50%)">COUNCIL CHAMBER — EST. LONG AGO — POPULATION: BUTTONS</div>
+  <div class="roomNote" style="left:50%;bottom:60px;transform:translateX(-50%)">NO PURPOSE IS SERVED HERE. ENJOY YOUR STAY.</div>
+  <div class="roomNote" style="left:60px;top:50%;writing-mode:vertical-rl">PHOTOS OF VISITORS BECOME COUNCIL MEMBERS</div>
+ </div>
+ <canvas id="fx" width="3600" height="2400"></canvas>
+ <div id="stage"></div>
+</div></div></div>
+
+<div id="topbar">
+ <div id="brand">THE COUNCIL OF BUTTONS<small>in extraordinary session</small></div>
+ <button class="chip" id="demoBtn">▶ DEMO MODE</button>
+ <button class="chip" id="boothBtn">📷 PHOTO BOOTH</button>
+ <button class="chip" id="sndBtn">SOUND: ON</button>
+ <div id="volWrap">🔈<input type="range" id="vol" min="0" max="100" value="60"></div>
+ <button class="chip" id="helpBtn">? HELP</button>
+ <button class="chip" id="resetBtn">RESET</button>
+ <div id="stats">PRESS: 0 · BUTTONS: 500</div>
+</div>
+<div id="ticker"></div>
+<div id="sfxcap"></div>
+<ul id="log"></ul>
+<canvas id="minimap" width="180" height="120"></canvas>
+<div id="inspector"><span id="inspClose">✕</span><h3 id="inspTitle"></h3><div id="inspBody"></div></div>
+<div id="tip"></div>
+<div id="toastwrap"></div>
+<div id="secrets"></div>
+<div id="flash"></div><div id="vignette"></div>
+<div id="dialogBack"><div id="dialog"><h2 id="dlgTitle"></h2><div class="body" id="dlgBody"></div><div class="btns" id="dlgBtns"></div></div></div>
+<div id="boothBack"><div id="booth"><h2>📷 PHOTO BOOTH</h2>
+ <div id="boothStage"><video id="pv" autoplay playsinline muted></video></div>
+ <p class="hint">Your photo becomes a floating Council member.<br>It will wander the chamber. It will judge you.</p>
+ <div class="btns"><button class="chip" id="snapBtn">📸 SNAP</button><button class="chip" id="cancelBtn">CANCEL</button></div>
+</div></div>
+<div id="intro">
+ <h1>THE COUNCIL<br>OF BUTTONS</h1>
+ <p>500 BUTTONS ARE IN SESSION.<br>THERE IS NO GOAL. PLEASE ACCOMPLISH NOTHING.<br>DRAG TO PAN · SCROLL TO ZOOM · CLICK EVERYTHING<br>📷 YOUR FACE CAN JOIN THE COUNCIL</p>
+ <div class="enter">CLICK TO ENTER</div>
+</div>
+
+<script>
+"use strict";
+/* ============ CORE ============ */
+const W=3600,H=2400,START=500,CAP=560,FINALE_AT=100;
+const $=id=>document.getElementById(id);
+const worldEl=$('world'),cameraEl=$('camera'),roomfxEl=$('roomfx'),fx=$('fx'),fctx=fx.getContext('2d'),
+ stage=$('stage'),tip=$('tip'),room=$('room');
+const buttons=[],byId={},photos=[];
+let pan={x:0,y:0},scale=.5,rot=0,shake={x:0,y:0};
+let physicsOn=true,muted=false,volume=.6,entered=false;
+let totalClicks=0,sessionStart=Date.now(),lastAction=Date.now(),cloneSeq=501,photoSeq=601;
+let eventActive=false,camT=null,demoRunning=false;
+const clickHist=[],recentLinks=[],secretsFound=new Set(),primeHit=new Set();
+const PRIMES=new Set([2,3,5,7,11,13,17,19,23,29,31,37,41,43,47,53,59,61,67,71,73,79,83,89,97]);
+const meta=(()=>{try{return JSON.parse(localStorage.getItem('council_v2'))||{}}catch(e){return{}}})();
+totalClicks=meta.totalClicks||0;
+muted=!!meta.muted; if(meta.volume!=null)volume=meta.volume;
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+const rnd=(a,b)=>a+Math.random()*(b-a);
+const ri=(a,b)=>Math.floor(rnd(a,b+1));
+const pick=a=>a[Math.floor(Math.random()*a.length)];
+const now=()=>performance.now()/1000;
+
+/* ============ AUDIO ============ */
+let ac=null,master=null,noiseBuf=null,voiceCount=0;const lastPlay={};
+function ensureAC(){
+ if(ac)return ac;
+ try{
+  ac=new (window.AudioContext||window.webkitAudioContext)();
+  master=ac.createGain();master.gain.value=muted?0:volume;
+  const comp=ac.createDynamicsCompressor();
+  comp.threshold.value=-18;comp.ratio.value=6;
+  master.connect(comp);comp.connect(ac.destination);
+  noiseBuf=ac.createBuffer(1,ac.sampleRate*1.2,ac.sampleRate);
+  const d=noiseBuf.getChannelData(0);
+  for(let i=0;i<d.length;i++)d[i]=Math.random()*2-1;
+ }catch(e){}
+ return ac;
+}
+function tone(o){
+ if(!ac)return;const t0=ac.currentTime+(o.when||0),t=o.t||.15;
+ const osc=ac.createOscillator(),g=ac.createGain();
+ osc.type=o.type||'sine';osc.frequency.setValueAtTime(o.f,t0);
+ if(o.f2)osc.frequency.exponentialRampToValueAtTime(Math.max(o.f2,1),t0+(o.slideT||t));
+ g.gain.setValueAtTime(.0001,t0);
+ g.gain.exponentialRampToValueAtTime(o.v||.4,t0+.012);
+ g.gain.exponentialRampToValueAtTime(.001,t0+t);
+ osc.connect(g);g.connect(master);osc.start(t0);osc.stop(t0+t+.05);
+}
+function noiseS(o){
+ if(!ac)return;const t0=ac.currentTime+(o.when||0),t=o.t||.2;
+ const s=ac.createBufferSource();s.buffer=noiseBuf;s.loop=true;
+ const f=ac.createBiquadFilter();f.type=o.type||'lowpass';f.frequency.value=o.fc||1000;if(o.q)f.Q.value=o.q;
+ const g=ac.createGain();
+ g.gain.setValueAtTime(.0001,t0);
+ g.gain.exponentialRampToValueAtTime(o.v||.3,t0+.015);
+ g.gain.exponentialRampToValueAtTime(.001,t0+t);
+ s.connect(f);f.connect(g);g.connect(master);s.start(t0);s.stop(t0+t+.05);
+}
+const sounds={
+ click:()=>{tone({f:220,f2:150,type:'square',t:.055,v:.22});noiseS({t:.03,v:.12,fc:3200,type:'highpass'})},
+ bonk:()=>tone({f:190,f2:58,type:'triangle',t:.19,v:.4}),
+ buzz:()=>{tone({f:112,type:'square',t:.2,v:.26});tone({f:119,type:'square',t:.2,v:.2})},
+ pop:()=>{tone({f:280,f2:880,t:.11,v:.32});noiseS({t:.05,v:.12,fc:2400,type:'highpass'})},
+ whirr:()=>{tone({f:95,f2:230,type:'sawtooth',t:.28,v:.14});noiseS({t:.28,v:.07,fc:520})},
+ angry:()=>{tone({f:210,f2:88,type:'square',t:.28,v:.3});noiseS({t:.15,v:.1,fc:300})},
+ squeak:()=>tone({f:920,f2:1500,t:.11,v:.2}),
+ sad:()=>{tone({f:392,type:'triangle',t:.24,v:.3});tone({f:349,type:'triangle',t:.24,v:.3,when:.22});tone({f:294,type:'triangle',t:.4,v:.3,when:.44})},
+ chime:()=>{tone({f:880,t:.5,v:.2});tone({f:1174.7,t:.5,v:.16,when:.09});tone({f:1568,t:.6,v:.12,when:.18})},
+ fanfare:()=>{[523,659,784,1047].forEach((f,i)=>tone({f,type:'square',t:.14,v:.16,when:i*.09}));noiseS({t:.3,v:.08,fc:5000,type:'highpass',when:.36})},
+ victory:()=>{[523,659,784,1047,1319].forEach((f,i)=>tone({f,type:'square',t:.16,v:.17,when:i*.11}));tone({f:78,f2:40,t:.6,v:.5,when:.5});noiseS({t:.4,v:.1,fc:6000,type:'highpass',when:.5})},
+ trombone:()=>{[233,208,185,147].forEach((f,i)=>tone({f,type:'sawtooth',t:.26,v:.2,when:i*.24}))},
+ giggle:()=>{tone({f:700,f2:1100,t:.08,v:.2});tone({f:900,f2:1300,t:.08,v:.2,when:.09})},
+ gasp:()=>noiseS({t:.3,v:.24,fc:1400,type:'bandpass',q:1.2}),
+ boom:()=>{tone({f:76,f2:28,t:.5,v:.6});noiseS({t:.4,v:.3,fc:180})},
+ whoosh:()=>noiseS({t:.32,v:.2,fc:900,type:'bandpass',q:.8}),
+ siren:()=>{for(let i=0;i<4;i++){tone({f:640,type:'square',t:.14,v:.14,when:i*.28});tone({f:840,type:'square',t:.14,v:.14,when:i*.28+.14})}},
+ snore:()=>tone({f:66,f2:52,type:'sawtooth',t:.9,v:.14}),
+ shutter:()=>{noiseS({t:.04,v:.35,fc:4000,type:'highpass'});tone({f:1200,f2:300,t:.05,v:.2})},
+ zoom:()=>{tone({f:200,f2:600,t:.18,v:.12});noiseS({t:.18,v:.08,fc:1800,type:'bandpass'})},
+ plop:()=>tone({f:420,f2:120,t:.14,v:.3}),
+ sparkle:()=>{[1568,1976,2349].forEach((f,i)=>tone({f,t:.3,v:.1,when:i*.05}))},
+ dum:()=>{tone({f:196,type:'triangle',t:.3,v:.3});tone({f:185,type:'triangle',t:.35,v:.3,when:.28})},
+};
+const CAPS={click:'[mechanical click]',bonk:'[bonk]',buzz:'[tiny buzzer]',pop:'[magical pop]',whirr:'[mechanical whirr]',angry:'[distorted beep]',squeak:'[tiny squeak]',sad:'[sad descending tone]',chime:'[mysterious chime]',fanfare:'[ridiculous fanfare]',victory:'[dramatic victory sound]',trombone:'[sad trombone]',giggle:'[button giggle]',gasp:'[collective gasp]',boom:'[cartoon boom]',whoosh:'[whoosh]',siren:'[alarm siren]',snore:'[snoring]',shutter:'[camera shutter]',zoom:'[zoom]',plop:'[plop]',sparkle:'[sparkle]',dum:'[dun dun dunnn]'};
+const cooldowns={click:45,bonk:70,buzz:150,pop:60,squeak:90,shutter:150};
+function play(name){
+ sfxcap(CAPS[name]||'[?]');
+ if(muted||!entered||!ensureAC())return;
+ if(ac.state==='suspended')ac.resume();
+ if(voiceCount>22)return;
+ const t=performance.now(),cd=cooldowns[name]||45;
+ if(lastPlay[name]&&t-lastPlay[name]<cd)return;
+ lastPlay[name]=t;voiceCount++;setTimeout(()=>voiceCount--,350);
+ try{if(sounds[name])sounds[name]()}catch(e){}
+}
+let capTm=null;
+function sfxcap(txt){
+ const el=$('sfxcap');el.textContent=txt;el.classList.add('show');
+ clearTimeout(capTm);capTm=setTimeout(()=>el.classList.remove('show'),1100);
+}
+
+/* ============ BUTTON DATA ============ */
+const PERSONALITIES=['nervous','arrogant','lazy','confused','dramatic','angry','enthusiastic','paranoid','potato','shy','elegant'];
+const FONTS=['Georgia, serif','"Comic Sans MS","Comic Neue",cursive','Impact, sans-serif','"Courier New",monospace','Verdana, sans-serif','"Trebuchet MS",sans-serif','"Times New Roman",serif','"Arial Black",sans-serif'];
+const ICO=['🔴','🟢','🔵','🟣','🟠','🟡','⚫','⚪','❗','❓','✳','❋','◉','◍','☢','☰','⟁','✦','◐','⚑','☕','🌀','👁','🎲','🏺','🦴','⌘','✹','⬢'];
+const NAMES=['THE UNDECIDED','MR PRESSURE','THE HESITATOR','SIR CLICKSALOT','THE VAGUE','THE WHISPERER','DEPT. OF NOTHING','THE OVERSIGHT','CAPTAIN HESITATE','THE FILLER','MINISTRY OF VIBES','THE REDUNDANT','THE DOODAD','THE GIZMO','THE WHATNOT','THE MAYBE','THE SORT OF','THE WHOOPS','THE OOPS','THE UMM','THE SHRUG','THE MEH','THE ALLEGED','THE HYPOTHETICAL','THE INERT','THE PASSIVE','THE DORMANT','THE IDLE','THE PECKISH','THE FUNKY'];
+const FLAVOR={
+ nervous:['is not ready for this','has read the safety manual twice','worries constantly','saw a cursor move earlier. still shaken.'],
+ arrogant:['peer-reviewed itself','invented pressing','is better than the button next to it','has a diploma in pressing'],
+ lazy:['will do it tomorrow','is buffering','hasn\'t moved since Tuesday','delegates all tasks'],
+ confused:['thought today was Thursday','isn\'t sure which one of you is the user','read its own manual backwards','is lost'],
+ dramatic:['has prepared a monologue','rehearses in the mirror','feels EVERYTHING deeply','is always on stage'],
+ angry:['has filed 47 complaints','saw what you did there','is this close to losing it','grinds its bezel at night'],
+ enthusiastic:['LOVES mondays','has already pressed itself twice today','is SO happy you came','brought snacks for everyone'],
+ paranoid:['knows about the other buttons','heard that','suspects the cursor','trusts no one, especially #113'],
+ potato:['is a potato','identifies as a root vegetable','mashes under pressure','grows eyes (see: pupil)'],
+ shy:['prefers email','hides behind others','will speak if spoken to','apologizes in advance'],
+ elegant:['was polished this morning','bows upon clicking','smells faintly of lavender','holds doors for other buttons'],
+ human:['came from your camera','does not understand where it is','blinks. it checked.','is technically not a button'],
+};
+const MOODS=[['calm','#7ec8a9'],['smug','#c9a7ff'],['antsy','#f2b25c'],['furious','#ef6b5d'],['sleepy','#8fa3c9'],['giddy','#f2d15c'],['eepy','#a9b8a0'],['smitten','#f08fb5'],['dizzy','#8fd4e8'],['suspicious','#d4975c'],['resigned','#9aa0a6'],['electric','#b8e05c']];
+const QUIRK={nervous:'a-shiver',arrogant:'a-spin',lazy:'a-sag',confused:'a-crazy',dramatic:'a-pulse',angry:'a-angry',enthusiastic:'a-bounce',paranoid:'a-peek',potato:'a-lump',shy:'a-peek',elegant:'a-breathe'};
+const SPECIALS={
+ 1:{n:'THE BIG ONE',i:'🔴',h:0,s:130,st:'glow'},
+ 7:{n:'THE LUCKY ONE',i:'🍀',h:130,s:88,f:2},
+ 17:{n:'THE ROTATOR',i:'🌀',h:265,s:86},
+ 22:{n:'THE SUPPORTIVE',i:'🫶',h:340,s:76,f:1},
+ 23:{n:'THE DRAMATIC ONE',i:'🎭',h:45,s:98,st:'neon'},
+ 42:{n:'THE ANSWER',i:'🧮',h:200,s:80,f:3},
+ 56:{n:'THE POTATO',i:'🥔',h:33,s:55,p:'potato'},
+ 57:{n:'REPRODUCTION',i:'🧬',h:150,s:84},
+ 73:{n:'SELF-CARE',i:'🛁',h:180,s:78},
+ 77:{n:'THE PORTRAITIST',i:'📷',h:195,s:84},
+ 84:{n:'DO NOT PRESS',i:'⛔',h:0,s:82,p:'arrogant'},
+ 91:{n:'THE INNOCENT',i:'😇',h:55,s:74},
+ 99:{n:'THE DIZZY',i:'💫',h:285,s:80},
+ 113:{n:'THE SLEEPER',i:'😴',h:220,s:90},
+ 117:{n:'THE PROUD',i:'🏆',h:45,s:78},
+ 127:{n:'THE PRIME MINISTER',i:'🎩',h:260,s:92,st:'metal'},
+ 150:{n:'THE PING',i:'📡',h:190,s:82},
+ 203:{n:'THE CONGRATULATOR',i:'🎉',h:320,s:86,f:1},
+ 204:{n:'TYPOGRAPHIC AUTHORITY',i:'🅰',h:0,s:88,f:3},
+ 213:{n:'THE DENIER',i:'🙅',h:15,s:80},
+ 301:{n:'UNNECESSARY',i:'➖',h:0,s:72,st:'flat'},
+ 308:{n:'THE MAGNET',i:'🧲',h:350,s:84},
+ 314:{n:'THE SLICER',i:'🥧',h:30,s:86},
+ 348:{n:'THE ROTATABLE',i:'🎠',h:280,s:84},
+ 369:{n:'TIME KEEPER',i:'⌛',h:215,s:80,f:3},
+ 388:{n:'THE OPTIMIST',i:'🌞',h:48,s:86,f:1},
+ 404:{n:'NOT FOUND',i:'❔',h:0,s:80,st:'outline'},
+ 410:{n:'THE PANIC',i:'🚨',h:0,s:90,st:'warn'},
+ 444:{n:'THE SAD ONE',i:'🌧',h:225,s:80},
+ 491:{n:'REPRODUCTION II',i:'🥚',h:160,s:84},
+ 500:{n:'THE FINALE',i:'🎆',h:310,s:120,st:'glow'},
+};
+function styleCSS(st,h,sat){
+ const hsl=(l,a)=>`hsla(${h},${sat}%,${l}%,${a==null?1:a})`;
+ switch(st){
+  case 'flat':return `background:${hsl(46)};color:#101014;border:none;box-shadow:0 4px 0 ${hsl(32)},0 8px 18px rgba(0,0,0,.5)`;
+  case 'outline':return `background:rgba(0,0,0,.25);color:${hsl(70)};border:3px solid ${hsl(60)};box-shadow:0 0 0 6px rgba(0,0,0,.2)`;
+  case 'glow':return `background:radial-gradient(circle at 34% 30%,${hsl(70)},${hsl(45)} 70%);color:#fff;border:2px solid ${hsl(85)};box-shadow:0 0 26px ${hsl(60,.75)},0 6px 20px rgba(0,0,0,.55)`;
+  case 'metal':return `background:linear-gradient(145deg,#e8e8ee,#9a9aa6 45%,#d5d5de 60%,#7c7c88);color:#222;border:2px solid #55555f;box-shadow:0 5px 0 #4a4a54,0 8px 18px rgba(0,0,0,.55)`;
+  case 'dashed':return `background:${hsl(38,.35)};color:${hsl(75)};border:3px dashed ${hsl(65)};box-shadow:0 4px 14px rgba(0,0,0,.4)`;
+  case 'double':return `background:${hsl(42)};color:#14141a;border:6px double ${hsl(78)};box-shadow:0 5px 16px rgba(0,0,0,.5)`;
+  case 'neon':return `background:#0c0c14;color:${hsl(75)};border:2px solid ${hsl(70)};box-shadow:0 0 14px ${hsl(65,.9)},inset 0 0 14px ${hsl(60,.4)}`;
+  case 'warn':return `background:repeating-conic-gradient(#f2c94c 0 25%,#1c1c14 0 50%) 50%/22px 22px;color:#fff;border:4px solid #14140c;box-shadow:0 0 0 3px #f2c94c,0 6px 18px rgba(0,0,0,.55)`;
+  default:return `background:radial-gradient(circle at 34% 30%,${hsl(68)},${hsl(44)} 75%);color:#fff;border:2px solid rgba(0,0,0,.35);box-shadow:0 5px 0 ${hsl(30)},0 9px 18px rgba(0,0,0,.55)`;
+ }
+}
+function applySpecial(b){
+ const s=SPECIALS[b.id];if(!s)return false;
+ b.name=s.n;b.icon=s.i;b.hue=s.h;if(s.s)b.size=s.s;if(s.st)b.style=s.st;if(s.f!=null)b.font=s.f;if(s.p)b.pers=s.p;
+ return true;
+}
+function genButtons(){
+ for(let i=1;i<=START;i++){
+  const b={id:i,hue:(i*47)%360,sat:ri(45,75),pers:null,style:'classic',font:null,mood:pick(MOODS),
+   disabled:false,gone:false,vx:0,vy:0,ox:0,oy:0,tx:0,ty:0,rotOff:rnd(-14,14),
+   bobA:Math.random()<.18?rnd(3,7):0,bobS:rnd(.5,1.4),bobP:rnd(0,6.28),
+   born:new Date().toLocaleTimeString(),clicks:0,awake:false,veteran:false,size:0,x:0,y:0};
+  if(Math.random()<.16)b.pers=pick(PERSONALITIES);
+  const r=Math.random();
+  b.style=r<.6?'classic':r<.72?'flat':r<.8?'outline':r<.86?'glow':r<.91?'dashed':r<.95?'neon':r<.98?'double':'metal';
+  b.font=Math.random()<.14?ri(0,FONTS.length-1):null;
+  b.size=Math.random()<.12?ri(88,120):Math.random()<.5?ri(56,74):ri(40,56);
+  if(Math.random()<.05)b.disabled=true;
+  if(!applySpecial(b)){
+   if(b.disabled){b.name='RETIRED';b.icon='💤'}
+   else{b.name=pick(NAMES);b.icon=pick(ICO)}
+  }
+  const cl=Math.random();
+  if(cl<.55){b.x=clamp(rnd(500,3100)+rnd(-260,260),120,3480);b.y=clamp(rnd(300,2100)+rnd(-260,260),120,2280)}
+  else{b.x=rnd(140,3460);b.y=rnd(140,2260)}
+  buttons.push(b);byId[b.id]=b;
+ }
+ const plaza=[[17,1520,940],[84,2080,940],[1,1800,1060],[301,1520,1200],[404,2080,1200],[56,1660,1120],[77,1940,1120],[500,1800,1620]];
+ plaza.forEach(([id,x,y])=>{const b=byId[id];b.x=x;b.y=y;});
+}
+function coreVisual(b){
+ let css=styleCSS(b.style,b.hue,b.sat);
+ if(b.disabled)css+=';filter:saturate(.1) brightness(.55)';
+ return css;
+}
+function makeEl(b){
+ const el=document.createElement('div');
+ el.className='btn';el.dataset.id=b.id;
+ el.style.cssText=`left:${b.x-b.size/2}px;top:${b.y-b.size/2}px;width:${b.size}px;height:${b.size}px`;
+ const lift=document.createElement('div');lift.className='lift';
+ const core=document.createElement('div');core.className='core';
+ core.style.cssText=coreVisual(b)+`;font-size:${b.size}px;transform:rotate(${b.rotOff}deg)`;
+ core.dataset.num='#'+b.id;
+ if(b.font!=null)core.style.fontFamily=FONTS[b.font];
+ if(QUIRK[b.pers])core.classList.add(QUIRK[b.pers]);
+ const ico=document.createElement('span');ico.className='ico';ico.textContent=b.icon||'◉';
+ const lbl=document.createElement('span');lbl.className='lbl';lbl.textContent=b.name;
+ core.append(ico,lbl);
+ if(b.pers==='paranoid'||b.id===113){const p=document.createElement('div');p.className='pupil';core.appendChild(p);b.pupil=p}
+ const num=document.createElement('div');num.className='numeral';num.textContent='#'+b.id;
+ lift.appendChild(core);el.append(lift,num);
+ if(b.disabled)el.style.opacity=.55;
+ if(b.id===500)el.style.zIndex=30;
+ b.el=el;b.core=core;
+ return el;
+}
+function applyCoreRefresh(b){
+ if(!b.core)return;
+ b.core.style.cssText=coreVisual(b)+`;font-size:${b.size}px;transform:rotate(${b.rotOff}deg)`;
+ if(b.font!=null)b.core.style.fontFamily=FONTS[b.font];
+}
+
+/* ============ CAMERA (world) ============ */
+function applyCamera(){
+ const vw=innerWidth,vh=innerHeight;
+ if(W*scale>vw)pan.x=clamp(pan.x,vw-W*scale,0);else pan.x=(vw-W*scale)/2;
+ if(H*scale>vh)pan.y=clamp(pan.y,vh-H*scale,0);else pan.y=(vh-H*scale)/2;
+ cameraEl.style.transform=`translate(${pan.x}px,${pan.y}px) scale(${scale})`;
+ roomfxEl.style.transform=`rotate(${rot}rad) translate(${shake.x}px,${shake.y}px)`;
+}
+function screenToWorld(cx,cy){
+ const x=(cx-pan.x)/scale,y=(cy-pan.y)/scale;
+ const c=Math.cos(rot),s=Math.sin(rot);
+ return {x:c*x+s*y-shake.x,y:-s*x+c*y-shake.y};
+}
+function setZoom(ns,cx,cy){
+ const before=screenToWorld(cx,cy);
+ scale=clamp(ns,.28,1.7);applyCamera();
+ const after=screenToWorld(cx,cy);
+ pan.x+=(after.x-before.x)*scale;pan.y+=(after.y-before.y)*scale;applyCamera();
+}
+function panTo(x,y){camT={x:innerWidth/2-x*scale,y:innerHeight/2-y*scale}}
+
+/* ============ FX ============ */
+const parts=[],beams=[],ripples=[];
+function addPart(o){if(parts.length>650)return;parts.push(Object.assign({t:now(),dur:.9,size:3,shape:'dot',g:0,vx:0,vy:0,rot:0,vr:0},o))}
+function burst(x,y,color,n,pow){
+ n=n||16;pow=pow||220;
+ for(let i=0;i<n;i++){const a=rnd(0,6.28),v=rnd(pow*.3,pow);
+  addPart({x,y,vx:Math.cos(a)*v,vy:Math.sin(a)*v,g:300,dur:rnd(.4,.9),size:rnd(2,5),color})}
+}
+function confetti(x,y,n){
+ n=n||60;const cols=['#ff5d5d','#ffd76a','#7ee787','#8fd4e8','#c9a7ff','#f08fb5','#fff'];
+ for(let i=0;i<n;i++){const a=rnd(-2.6,-.5),v=rnd(180,520);
+  addPart({x,y,vx:Math.cos(a)*v,vy:Math.sin(a)*v,g:620,dur:rnd(1,1.9),size:rnd(4,8),shape:'rect',color:pick(cols),vr:rnd(-9,9)})}
+}
+function ripple(x,y,color,max){ripples.push({x,y,t:now(),dur:.55,max:max||70,color:color||'rgba(255,255,255,.7)'})}
+function beam(a,b,color,w){beams.push({x1:a.x,y1:a.y,x2:b.x,y2:b.y,t:now(),dur:.7,color:color||'#c9b8ff',w:w||3})}
+function floatText(x,y,txt,color,size){
+ const d=document.createElement('div');d.className='floaty';
+ d.style.cssText=`left:${x}px;top:${y}px;color:${color||'#fff'};font-size:${size||16}px`;
+ d.textContent=txt;stage.appendChild(d);setTimeout(()=>d.remove(),1650);
+}
+function whisperAt(txt){
+ const p=screenToWorld(cursor.sx,cursor.sy);
+ const d=document.createElement('div');d.className='floaty whisper';
+ d.style.cssText=`left:${p.x+10}px;top:${p.y-10}px`;d.textContent=txt;
+ stage.appendChild(d);setTimeout(()=>d.remove(),1650);
+}
+let shakeUntil=0,shakePow=0;
+function screenShake(pow,dur){shakePow=Math.max(shakePow,pow);shakeUntil=now()+(dur||.4)}
+function flashScreen(op){const f=$('flash');f.style.opacity=op||.5;setTimeout(()=>f.style.opacity=0,90)}
+function drawFX(){
+ fctx.clearRect(0,0,W,H);
+ const t=now();
+ for(let i=ripples.length-1;i>=0;i--){const r=ripples[i],p=(t-r.t)/r.dur;
+  if(p>=1){ripples.splice(i,1);continue}
+  fctx.beginPath();fctx.arc(r.x,r.y,r.max*p,0,6.28);
+  fctx.strokeStyle=r.color;fctx.globalAlpha=(1-p)*.8;fctx.lineWidth=2.5*(1-p)+.5;fctx.stroke()}
+ for(let i=beams.length-1;i>=0;i--){const b=beams[i],p=(t-b.t)/b.dur;
+  if(p>=1){beams.splice(i,1);continue}
+  const hx=b.x1+(b.x2-b.x1)*p,hy=b.y1+(b.y2-b.y1)*p;
+  fctx.globalAlpha=.85;fctx.strokeStyle=b.color;fctx.lineWidth=b.w;
+  fctx.setLineDash([10,8]);fctx.lineDashOffset=-t*90;
+  fctx.beginPath();fctx.moveTo(b.x1,b.y1);fctx.lineTo(hx,hy);fctx.stroke();fctx.setLineDash([]);
+  fctx.beginPath();fctx.arc(hx,hy,b.w*2.2,0,6.28);fctx.fillStyle='#fff';fctx.globalAlpha=(1-p)*.95;fctx.fill()}
+ fctx.globalAlpha=1;
+ for(let i=parts.length-1;i>=0;i--){const p=parts[i],age=t-p.t;
+  if(age>=p.dur){parts.splice(i,1);continue}
+  p.vy+=p.g/60;p.x+=p.vx/60;p.y+=p.vy/60;p.rot+=p.vr/60;
+  const lp=1-age/p.dur;
+  fctx.globalAlpha=lp;fctx.fillStyle=p.color;
+  if(p.shape==='rect'){fctx.save();fctx.translate(p.x,p.y);fctx.rotate(p.rot);fctx.fillRect(-p.size/2,-p.size/4,p.size,p.size/2);fctx.restore()}
+  else{fctx.beginPath();fctx.arc(p.x,p.y,p.size*lp,0,6.28);fctx.fill()}}
+ fctx.globalAlpha=1;
+}
+
+/* ============ LOG / TOAST / SPEECH ============ */
+function log(html){
+ const ul=$('log'),li=document.createElement('li');li.innerHTML=html;
+ ul.appendChild(li);while(ul.children.length>7)ul.removeChild(ul.firstChild);
+}
+function toast(txt,ms){
+ const d=document.createElement('div');d.className='toast';d.textContent=txt;
+ $('toastwrap').appendChild(d);setTimeout(()=>{d.style.opacity=0;d.style.transition='opacity .4s';setTimeout(()=>d.remove(),450)},ms||2400);
+}
+function say(b,txt,ms){
+ if(!b||!b.el||b.gone)return;
+ const s=document.createElement('div');s.className='speech';s.textContent=txt;
+ s.style.left=(b.x+30)+'px';s.style.top=(b.y-b.size/2-70)+'px';
+ stage.appendChild(s);setTimeout(()=>s.remove(),ms||3200);
+}
+const TICKS=['The Council remains useless.','A subcommittee on pressing has formed.','Minutes are being taken. No one knows by whom.','The agenda is still: nothing.','Quorum has not been reached since 2019.','Someone moved a button 2px. Investigations continue.','Motion to do something: denied.','The Council hums quietly.'];
+function tickerSet(t){$('ticker').textContent='» '+t}
+function statsUpdate(){
+ $('stats').textContent=`PRESS: ${totalClicks.toLocaleString()} · BUTTONS: ${buttons.filter(b=>!b.gone).length + photos.length}`;
+}
+
+/* ============ MOOD / INSPECTOR ============ */
+function setMood(b,m){b.mood=m;if(b.core)b.core.style.borderColor=m[1]}
+function openInspector(b){
+ const ins=$('inspector');
+ $('inspTitle').textContent=`#${b.id} · “${b.name}”`;
+ const links=recentLinks.filter(l=>l.a===b.id||l.b===b.id).slice(-3);
+ $('inspBody').innerHTML=
+  `<div class="row">personality: <b>${b.pers||'mysterious'}</b></div>`+
+  `<div class="row">mood: <b>${b.mood[0]}</b></div>`+
+  `<div class="row">presses: <b>${b.clicks}</b> · born: ${b.born}</div>`+
+  `<div class="row">status: <b>${b.disabled?'retired':b.gone?'escaped':'active'}</b>${b.veteran?' · 🏅 veteran':''}</div>`+
+  (b.pers?`<div class="quote">“${pick(FLAVOR[b.pers])}”</div>`:'')+
+  (links.length?`<div class="row" style="margin-top:6px">recent dealings:</div>`+links.map(l=>`<div class="row">↳ #${l.a} → #${l.b}</div>`).join(''):'');
+ ins.style.display='block';
+}
+$('inspClose').onclick=()=>$('inspector').style.display='none';
+
+/* ============ CHAINS ============ */
+let chainBudget=0;setInterval(()=>chainBudget=0,1200);
+function scheduleHop(fromB,toId,delay,depth){
+ if(depth>4||chainBudget>14)return;
+ const toB=byId[toId];
+ if(!toB||toB.gone)return;
+ chainBudget++;
+ setTimeout(()=>{
+  if(!entered)return;
+  beam({x:fromB.x,y:fromB.y},{x:toB.x,y:toB.y});
+  play('whoosh');
+  recentLinks.push({a:fromB.id,b:toB.id});if(recentLinks.length>40)recentLinks.shift();
+  setTimeout(()=>chainEffect(toB,depth),320);
+ },delay||450);
+}
+function chainEffect(b,depth){
+ if(!b||b.gone)return;
+ const act=pick(['rotate','angry','color','bounce','fear','congrats','jiggle']);
+ switch(act){
+  case 'rotate':b.rotOff+=rnd(60,300);if(b.core)b.core.style.transform=`rotate(${b.rotOff}deg)`;play('whirr');floatText(b.x,b.y-b.size/2-8,'↻','#c9b8ff');setMood(b,['dizzy','#8fd4e8']);break;
+  case 'angry':setMood(b,['furious','#ef6b5d']);if(b.core)b.core.classList.add('a-angry');play('angry');floatText(b.x,b.y-b.size/2-8,'GRR','#ef6b5d');break;
+  case 'color':b.hue=(b.hue+ri(60,180))%360;applyCoreRefresh(b);play('plop');break;
+  case 'bounce':animate(b,{ty:-30},.5);play('squeak');setMood(b,['giddy','#f2d15c']);break;
+  case 'fear':setMood(b,['antsy','#f2b25c']);say(b,pick(['“eek!”','“was it me?”','“I saw everything.”','“not again.”']),2200);play('squeak');jiggle(b);break;
+  case 'congrats':say(b,pick(['“well done, everyone.”','“proud of us.”','“teamwork!”']),2600);play('fanfare');break;
+  case 'jiggle':jiggle(b);break;
+ }
+ if(depth<3&&Math.random()<.75){
+  const others=buttons.filter(x=>!x.gone&&x.id!==b.id&&Math.hypot(x.x-b.x,x.y-b.y)<700);
+  if(others.length)scheduleHop(b,pick(others).id,rnd(300,700),depth+1);
+ }
+}
+function jiggle(b){animate(b,{tx:rnd(-14,14),ty:rnd(-14,14)},.4)}
+function animate(b,to,dur){
+ b.tx=to.tx||0;b.ty=to.ty||0;activeAnim.add(b);
+ clearTimeout(b._settle);
+ b._settle=setTimeout(()=>{b.tx=0;b.ty=0},(dur||.5)*1000);
+}
+const activeAnim=new Set();
+
+/* ============ CLICK ============ */
+let suppressClick=false;
+function pressVisual(b){b.el.classList.add('pressed');setTimeout(()=>b.el.classList.remove('pressed'),130)}
+function clickBtn(b){
+ if(suppressClick||!b||b.gone)return;
+ lastAction=Date.now();
+ clickHist.push(performance.now());
+ b.clicks++;totalClicks++;
+ statsUpdate();updateSeqTracking(b);
+ pressVisual(b);
+ ripple(b.x,b.y,b.mood[1],b.size*.9);
+ burst(b.x,b.y,b.mood[1],10,160);
+ if(!b.disabled)play('click');else play('bonk');
+ if(b.id===113&&!b.awake){play('snore');pokeSleeper(b);return}
+ if(b.disabled){floatText(b.x,b.y-b.size/2-8,'zzz…','#9aa0a6',13);return}
+ handleSpecial(b);
+ if(b.pers&&Math.random()<.4)say(b,pick(FLAVOR[b.pers]),2400);
+ if(b.clicks===50&&!b.veteran){b.veteran=true;b.el.classList.add('veteran');play('fanfare');confetti(b.x,b.y,50);log(`<b>#${b.id}</b> is now a <b>VETERAN</b>.`)}
+ if(b.clicks>0&&b.clicks%100===0){play('victory');confetti(b.x,b.y,120);screenShake(9,.6);log(`<b>#${b.id}</b> reached <b>${b.clicks} PRESSES</b>.`)}
+ if(photos.length&&Math.random()<.25){photoChain(b)}
+ else if(Math.random()<.12){
+  const near=buttons.filter(x=>!x.gone&&x.id!==b.id&&Math.hypot(x.x-b.x,x.y-b.y)<800);
+  if(near.length)scheduleHop(b,pick(near).id,rnd(350,800),1);
+ }
+ checkMilestones();saveSoon();
+}
+function handleSpecial(b){
+ switch(b.id){
+  case 17:say(b,'“OBEY THE ROTATOR.”');scheduleHop(b,348,500,1);log(`<b>#17 THE ROTATOR</b> rotates <b>#348</b>.`);break;
+  case 348:b.rotOff+=137;if(b.core)b.core.style.transform=`rotate(${b.rotOff}deg)`;play('whirr');floatText(b.x,b.y-40,'SPINNING','#c9a7ff');
+   setMood(b,['dizzy','#8fd4e8']);scheduleHop(b,91,600,1);break;
+  case 204:{const t=byId[pick([6,7,8,9,10,11,12])];
+   t.font=(t.font==null?ri(0,7):(t.font+1)%8);applyCoreRefresh(t);
+   beam({x:b.x,y:b.y},{x:t.x,y:t.y});play('whoosh');
+   say(b,t.font%2?'“COMIC SANS IS OBJECTIVELY CORRECT.”':'“SERIF IS OBJECTIVELY CORRECT.”');
+   log(`<b>#204</b> changed <b>#${t.id}</b>'s font. There were casualties.`);break}
+  case 73:b.disabled=true;b.el.style.opacity=.4;applyCoreRefresh(b);
+   play('sad');floatText(b.x,b.y-50,'goodbye…','#9aa0a6',15);say(b,'“I need to focus on me.”');
+   log(`<b>#73 SELF-CARE</b> disabled itself. Healthy.`);break;
+  case 57:case 491:spawnClone(b);break;
+  case 22:{const t=byId[117];beam({x:b.x,y:b.y},{x:t.x,y:t.y});say(t,'“#22 believes in me!!”',3000);
+   play('fanfare');burst(t.x,t.y,'#f2d15c',20,240);log(`<b>#22</b> congratulated <b>#117</b>.`);break}
+  case 117:say(b,'“I WAS CONGRATULATED ONCE.”');play('giggle');break;
+  case 203:play('fanfare');confetti(b.x,b.y,60);say(b,'“CONGRATULATIONS TO ABSOLUTELY EVERYONE.”');
+   for(let i=0;i<3;i++){const o=pick(buttons.filter(x=>!x.gone&&x.id!==203));beam({x:b.x,y:b.y},{x:o.x,y:o.y});say(o,'“me?? thank you!!”',2400)}
+   log(`<b>#203</b> congratulated the whole Council. Nobody knows for what.`);break;
+  case 301:play('bonk');floatText(b.x,b.y-40,'(nothing)','#9aa0a6',13);break;
+  case 404:if(!b.awake){toast('404: button not found');play('buzz');b.el.style.opacity=.1;
+   setTimeout(()=>{if(!b.awake)b.el.style.opacity=.55},2500)}
+   else{say(b,'“I exist now. Unfortunately.”');play('chime')}break;
+  case 84:doNotPress(b);break;
+  case 91:say(b,'“I had NOTHING to do with this.”');break;
+  case 213:say(b,'“This wasn\'t me. Check the cameras.”');play('gasp');break;
+  case 23:say(b,'“AT LAST!!! THE MOMENT IS HERE!!!”');play('victory');confetti(b.x,b.y,60);screenShake(6,.4);
+   setTimeout(()=>floatText(b.x,b.y-60,'…and scene.','#f2b25c',14),1400);break;
+  case 42:say(b,`“THE ANSWER IS ${ri(1,999)}.”`);setTimeout(()=>say(b,'“the question is lost.”'),1600);break;
+  case 56:floatText(b.x,b.y-40,'mash','#d4a95c',16);play('plop');say(b,pick(['“I am potato.”','“mash me again.”','“potato thanks you.”']));
+   if(b.clicks===10)unlock('potato','POTATO PRESSED 10 TIMES — it respects you now');break;
+  case 77:openBooth();break;
+  case 99:{const others=buttons.filter(x=>!x.gone&&x.id!==99);
+   for(let i=0;i<8;i++){const t=pick(others);t.rotOff+=ri(90,540);if(t.core)t.core.style.transform=`rotate(${t.rotOff}deg)`}
+   play('whirr');say(b,'“everything is spinning. you\'re welcome.”');
+   log(`<b>#99 THE DIZZY</b> shared its condition with 8 others.`);break}
+  case 7:{play('sparkle');confetti(b.x,b.y,40);const others=buttons.filter(x=>!x.gone&&x.id!==7);
+   for(let i=0;i<5;i++){const t=pick(others);t.el.classList.add('blush');setTimeout(()=>t.el.classList.remove('blush'),2500)}
+   log(`<b>#7 THE LUCKY ONE</b> blessed 5 buttons.`);break}
+  case 150:play('siren');toast('PING SENT');setTimeout(()=>toast('DELIVERED TO: nobody'),1200);break;
+  case 308:play('zoom');toast('MAGNETISM ENGAGED');buttons.filter(x=>!x.gone&&Math.hypot(x.x-b.x,x.y-b.y)<600).forEach(t=>animate(t,{tx:(b.x-t.x)*.15,ty:(b.y-t.y)*.15},.6));break;
+  case 314:floatText(b.x,b.y-46,'π ≈ 3.14159265','#f2b25c',14);play('chime');say(b,'“I contain infinite digits.”');break;
+  case 369:say(b,`“You have wasted ${Math.max(1,Math.floor((Date.now()-sessionStart)/60000))} minutes here. Beautiful.”`);break;
+  case 388:{const o=buttons.filter(x=>!x.gone&&x.id!==388);
+   for(let i=0;i<3;i++)say(pick(o),'“#388 says I\'m doing great!”',2600);play('giggle');break}
+  case 420:say(b,'“press me for FREE BITCOIN”');setTimeout(()=>{play('bonk');floatText(b.x,b.y-46,'(this was a lie)','#ef6b5d',14)},1500);break;
+  case 444:play('trombone');document.body.classList.add('sombre');setTimeout(()=>document.body.classList.remove('sombre'),5000);
+   log(`<b>#444</b> made everything worse somehow.`);break;
+  case 410:{play('siren');let fl=0;const iv=setInterval(()=>{flashScreen(.35);if(++fl>5)clearInterval(iv)},160);
+   setTimeout(()=>log('There was no emergency. <b>#410</b> apologizes.'),1300);break}
+  case 500:finale(b);break;
+  default:if(b.id>500)say(b,'“I\'m new here. What is going on?”');break;
+ }
+}
+function doNotPress(b){
+ if(b.dodges>0){fakeout(b);return}
+ say(b,'“I told you NOT to.”');play('buzz');
+ setTimeout(()=>fakeout(b),700);
+}
+function fakeout(b){
+ play('dum');
+ floatText(b.x,b.y-50,'3','#ef6b5d',30);
+ setTimeout(()=>floatText(b.x,b.y-50,'2','#ef6b5d',30),600);
+ setTimeout(()=>floatText(b.x,b.y-50,'1','#ef6b5d',30),1200);
+ setTimeout(()=>{
+  flashScreen(.85);screenShake(14,.8);play('boom');
+  confetti(W/2,H/2,200);
+  buttons.forEach(x=>{if(!x.gone&&!x.disabled)animate(x,{ty:-30},.8)});
+  setTimeout(()=>toast('NOTHING HAPPENED. THE BUTTON RESPECTED YOUR CHOICE.'),900);
+  log(`<b>DO NOT PRESS</b> was pressed. <b>Nothing exploded.</b> Everyone is disappointed.`);
+  unlock('dnp','YOU PRESSED DO NOT PRESS — and nothing happened');
+ },1900);
+}
+function spawnClone(parent){
+ if(buttons.length>=CAP){const c=buttons.find(x=>x.id>500);if(c)despawn(c,true)}
+ const nb=Object.assign({},parent);
+ nb.id=cloneSeq++;nb.clicks=0;nb.name=parent.name+' (offspring)';nb.born=new Date().toLocaleTimeString();
+ nb.x=clamp(parent.x+rnd(-160,160),120,3480);nb.y=clamp(parent.y+rnd(-160,160),120,2260);
+ nb.vx=nb.vy=nb.ox=nb.oy=0;nb.el=null;nb.core=null;nb.pupil=null;nb.disabled=false;nb.veteran=false;nb.gone=false;
+ buttons.push(nb);byId[nb.id]=nb;
+ const el=makeEl(nb);el.classList.add('spawn');room.appendChild(el);
+ play('pop');burst(nb.x,nb.y,'#7ee787',24,260);floatText(nb.x,nb.y-40,'#'+nb.id,'#7ee787',16);
+ log(`<b>#${parent.id}</b> reproduced. Meet <b>#${nb.id}</b>.`);
+ statsUpdate();
+}
+function despawn(b,permanent){
+ b.gone=true;b.el.classList.add('despawn');
+ setTimeout(()=>b.el.classList.add('gone'),380);
+ if(permanent)setTimeout(()=>{b.el.remove();const i=buttons.indexOf(b);if(i>=0)buttons.splice(i,1)},500);
+}
+function finale(b){
+ if(totalClicks<FINALE_AT){play('buzz');say(b,`“Return with ${FINALE_AT} presses. You have ${totalClicks}.”`);return}
+ play('victory');screenShake(14,.9);flashScreen(.7);
+ setTimeout(()=>confetti(W/2,H/2-200,380),300);
+ buttons.forEach(x=>{if(!x.gone&&!x.disabled)animate(x,{ty:-26},.8)});
+ photos.forEach(p=>p.vy=-260);
+ log(`<b>#500 THE FINALE</b> has concluded. <b>Nothing was accomplished. It was perfect.</b>`);
+ dialog('ACHIEVEMENT UNLOCKED','“Attended the Council of Buttons.”<br><br>Total presses: '+totalClicks+'<br>Accomplishments: 0<br>Dignity: also 0',['Take a bow'],[()=>closeDialog()]);
+}
+
+/* ============ PHOTOS (camera) ============ */
+const PHOTO_NAMES=['THE HUMAN','THE VISITOR','ANOTHER HUMAN','THE INTERLOPER','THE SECOND HUMAN','THE PORTRAIT'];
+let stream=null;
+function openBooth(){
+ if(!entered)return;
+ if(photos.length>=6){toast('The Council is full of visitors.');play('buzz');return}
+ play('zoom');
+ const back=$('boothBack');back.style.display='flex';
+ navigator.mediaDevices&&navigator.mediaDevices.getUserMedia?
+  navigator.mediaDevices.getUserMedia({video:{facingMode:'user',width:{ideal:640},height:{ideal:480}}})
+   .then(s=>{stream=s;$('pv').srcObject=s})
+   .catch(()=>{stream=null;toast('Camera unavailable. The Council will commission a portrait instead.')})
+  :toast('Camera unavailable in this browser.');
+}
+function closeBooth(){
+ $('boothBack').style.display='none';
+ if(stream){stream.getTracks().forEach(t=>t.stop());stream=null;$('pv').srcObject=null}
+}
+$('boothBtn').onclick=openBooth;
+$('cancelBtn').onclick=()=>{play('bonk');closeBooth()};
+$('snapBtn').onclick=snapPhoto;
+function snapPhoto(){
+ play('shutter');flashScreen(.6);
+ const v=$('pv');
+ const c=document.createElement('canvas');c.width=c.height=320;
+ const ctx=c.getContext('2d');
+ if(stream&&v.videoWidth){
+  const s=Math.min(v.videoWidth,v.videoHeight);
+  ctx.translate(320,0);ctx.scale(-1,1);
+  ctx.drawImage(v,(v.videoWidth-s)/2,(v.videoHeight-s)/2,s,s,0,0,320,320);
+  makePhoto(c.toDataURL('image/jpeg',.75));
+ }else{
+  makePhoto(null);
+ }
+ closeBooth();
+}
+function fallbackPortrait(){
+ const c=document.createElement('canvas');c.width=c.height=320;
+ const ctx=c.getContext('2d');
+ const g=ctx.createLinearGradient(0,0,320,320);
+ g.addColorStop(0,'#8a7bb8');g.addColorStop(1,'#4a4460');
+ ctx.fillStyle=g;ctx.fillRect(0,0,320,320);
+ ctx.fillStyle='#e8e0d0';ctx.beginPath();ctx.arc(160,150,80,0,6.28);ctx.fill();
+ ctx.fillStyle='#222';
+ ctx.beginPath();ctx.arc(130,135,9,0,6.28);ctx.arc(190,135,9,0,6.28);ctx.fill();
+ ctx.beginPath();ctx.arc(160,175,22,0,Math.PI);ctx.fill();
+ ctx.fillStyle='#3a3348';ctx.fillRect(60,230,200,90);
+ ctx.font='16px monospace';ctx.fillStyle='#cfc7e8';ctx.textAlign='center';
+ ctx.fillText('COMMISSIONED PORTRAIT',160,300);
+ return c.toDataURL();
+}
+function makePhoto(dataURL){
+ const p={id:photoSeq++,name:PHOTO_NAMES[(photoSeq-601)%PHOTO_NAMES.length],
+  x:W/2+rnd(-300,300),y:H/2+rnd(-200,200),size:120,
+  vx:rnd(-50,50),vy:rnd(-50,50),bobP:rnd(0,6.28),spin:rnd(-20,20),gone:false,
+  clicks:0,mood:['smitten','#f08fb5'],pers:'human',born:new Date().toLocaleTimeString(),_fling:0};
+ const el=document.createElement('div');el.className='photo spawn';
+ el.style.cssText=`left:${p.x-60}px;top:${p.y-60}px;width:120px;height:120px`;
+ const img=document.createElement('img');img.src=dataURL||fallbackPortrait();
+ const lbl=document.createElement('div');lbl.className='plabel';lbl.textContent=`#${p.id} · ${p.name}`;
+ el.append(img,lbl);room.appendChild(el);
+ p.el=el;photos.push(p);
+ play('pop');confetti(p.x,p.y,80);screenShake(6,.4);
+ toast(`#${p.id} “${p.name}” HAS JOINED THE COUNCIL`);
+ log(`📷 <b>#${p.id} ${p.name}</b> materialized from the photo booth. The buttons are nervous.`);
+ const near=buttons.filter(x=>!x.gone&&Math.hypot(x.x-p.x,x.y-p.y)<800);
+ if(near.length){const n=pick(near);beam({x:n.x,y:n.y},{x:p.x,y:p.y});setTimeout(()=>say(n,pick(['“who is THAT?”','“it blinked at me.”','“welcome, I guess?”','“it has no edges. disturbing.”']),3200),500)}
+ statsUpdate();
+ el.addEventListener('pointerdown',e=>{
+  e.stopPropagation();el.setPointerCapture(e.pointerId);el.classList.add('drag');
+  p._drag=true;p._hist=[{x:e.clientX,y:e.clientY,t:performance.now()}];
+ });
+ el.addEventListener('pointermove',e=>{
+  if(!p._drag)return;
+  const w=screenToWorld(e.clientX,e.clientY);
+  p.x=w.x;p.y=w.y;
+  el.style.left=(p.x-p.size/2)+'px';el.style.top=(p.y-p.size/2)+'px';
+  p._hist.push({x:e.clientX,y:e.clientY,t:performance.now()});
+  if(p._hist.length>5)p._hist.shift();
+ });
+ const release=e=>{
+  if(!p._drag)return;p._drag=false;el.classList.remove('drag');
+  const h=p._hist;
+  if(h.length>1){
+   const a=h[0],b2=h[h.length-1],dt=Math.max(16,b2.t-a.t)/1000;
+   p.vx=clamp((b2.x-a.x)/dt/scale,-600,600);
+   p.vy=clamp((b2.y-a.y)/dt/scale,-600,600);
+   if(Math.abs(p.vx)+Math.abs(p.vy)>250){play('whoosh');floatText(p.x,p.y-70,'WHEE','#8fd4e8',18)}
+  }
+ };
+ el.addEventListener('pointerup',release);
+ el.addEventListener('pointercancel',release);
+ el.addEventListener('click',()=>{
+  if(p._fling>performance.now())return;
+  p.clicks++;play('giggle');el.classList.remove('pop');void el.offsetWidth;el.classList.add('pop');
+  ripple(p.x,p.y,p.mood[1],80);burst(p.x,p.y,'#f08fb5',14,180);
+  say(p,pick(['“take me to your Chairman.”','“is this a button thing?”','“I regret everything.”','“more photos of me please.”']),2800);
+  if(photos.length&&Math.random()<.6)photoChain({x:p.x,y:p.y,id:p.id});
+ });
+}
+function photoChain(from){
+ const p=pick(photos);if(!p||p.gone)return;
+ chainBudget++;
+ beam({x:from.x,y:from.y},{x:p.x,y:p.y});play('whoosh');
+ setTimeout(()=>{
+  p.vy+=rnd(-120,120);p.vx+=rnd(-120,120);
+  p.el.classList.remove('pop');void p.el.offsetWidth;p.el.classList.add('pop');
+  play('squeak');
+  const gossiper=pick(buttons.filter(x=>!x.gone));
+  if(gossiper)say(gossiper,pick(['“the photo moved.”','“do NOT make eye contact with it.”','“it follows the cursor. I\'ve seen it.”','“I was in it once. I looked great.”']),3000);
+ },350);
+}
+setInterval(()=>{
+ if(!entered||!photos.length||eventActive)return;
+ const p=pick(photos),b=pick(buttons.filter(x=>!x.gone&&x.id!==113));
+ beam({x:b.x,y:b.y},{x:p.x,y:p.y});
+ say(b,pick(['“who is that?”','“the human returns.”','“it is watching the Chairman.”','“I moved 2px when it looked.”','“it came from a rectangle.”']),3200);
+ play('chime');
+},24000);
+
+/* ============ SECRETS ============ */
+let seqBuf=[],monoStreak=0,monoLast=0,evenSeq=2;
+function unlock(key,label){
+ if(secretsFound.has(key))return;
+ secretsFound.add(key);
+ const d=document.createElement('div');d.textContent='✦ SECRET: '+label;$('secrets').appendChild(d);
+ play('chime');confetti(W/2,H/2,80);screenShake(5,.4);
+ log(`✦ <b>SECRET FOUND:</b> ${label}`);saveSoon();
+}
+function updateSeqTracking(b){
+ const id=b.id;
+ seqBuf.push(id);if(seqBuf.length>4)seqBuf.shift();
+ if(seqBuf.join(',')==='1,2,3,7'){unlock('sequencer','THE SEQUENCER — you pressed 1, 2, 3, 7');
+  document.body.classList.add('rainbow');setTimeout(()=>document.body.classList.remove('rainbow'),2500)}
+ if(id===evenSeq&&id%2===0){evenSeq+=2;if(evenSeq>22)unlock('evens','EVENS IN ORDER (2–20) — suspiciously methodical')}
+ if(PRIMES.has(id)){primeHit.add(id);
+  if(primeHit.size===PRIMES.size){unlock('primes','PRIME MINISTER — every prime ≤ 97 pressed');
+   const m=byId[127];m.el.classList.add('veteran');say(m,'“A government of primes. Finally.”',4000);play('victory')}}
+ if(id>monoLast){monoStreak++;monoLast=id;
+  if(monoStreak===40){unlock('librarian','THE LIBRARIAN — 40 ascending presses');
+   document.body.classList.add('showNums');setTimeout(()=>document.body.classList.remove('showNums'),6000)}}
+ else{monoStreak=1;monoLast=id}
+}
+let konamiBuf='';
+addEventListener('keydown',e=>{
+ konamiBuf=(konamiBuf+e.key).slice(-11).toLowerCase();
+ if(konamiBuf.includes('uuddlrlrba')){
+  konamiBuf='';unlock('konami','↑↑↓↓←→←→BA — THE MAGNIFICENT BUTTON');
+  const nb={id:8,name:'THE MAGNIFICENT BUTTON',icon:'✨',x:W/2,y:H/2,size:96,hue:48,sat:80,pers:'arrogant',style:'glow',
+   font:2,mood:['smug','#c9a7ff'],disabled:false,gone:false,clicks:0,vx:0,vy:0,ox:0,oy:0,tx:0,ty:0,rotOff:0,
+   bobA:6,bobS:1,bobP:0,born:new Date().toLocaleTimeString(),awake:true,veteran:true};
+  buttons.push(nb);byId[8]=nb;
+  const el=makeEl(nb);el.classList.add('spawn');el.classList.add('veteran');room.appendChild(el);
+  play('sparkle');confetti(W/2,H/2,120);
+ }
+});
+function pokeSleeper(b){
+ b._pokes=(b._pokes||0)+1;
+ const mins=(Date.now()-sessionStart)/60000;
+ if(b._pokes>=5&&mins>=2){
+  b.awake=true;b.disabled=false;b.pers='angry';b.name='THE AWAKENED';b.icon='😡';
+  b.el.style.opacity=1;applyCoreRefresh(b);b.el.classList.add('awake');
+  play('boom');screenShake(10,.6);say(b,'“I\'M UP. WHO POKED ME FIVE TIMES?”',4500);
+  confetti(b.x,b.y,80);unlock('sleeper','THE SLEEPER AWAKENS');
+ }else if(b._pokes>=3)whisperAt('…it stirs…');
+}
+
+/* ============ MILESTONES ============ */
+function checkMilestones(){
+ const mins=(Date.now()-sessionStart)/60000;
+ if(mins>=10&&!secretsFound.has('ten')){unlock('ten','10 MINUTES OF YOUR LIFE — the Council thanks you');
+  dialog('SERVICE AWARD','You have been here <b>10 minutes</b>.<br>The Council awards you: <b>nothing</b>.',['Continue doing nothing'],[()=>closeDialog()])}
+ if(totalClicks>=FINALE_AT&&!secretsFound.has('ready500')){unlock('ready500','#500 THE FINALE is watching you now');
+  const f=byId[500];say(f,'“Soon.”',3000);play('chime')}
+}
+
+/* ============ RANDOM EVENTS ============ */
+const EVENTS=[evFreeze,evRotate,evGiant,evNoLabels,evChairman,evBounce,evUpsideDown,evEscape,evNewButtons,evVote,evUpdate,evCongrats,evQuality,evDust,evGrow,evAmnesia,evClone];
+let nextEventTime=45;
+function maybeEvent(){
+ const sec=(Date.now()-sessionStart)/1000;
+ if(sec<nextEventTime||eventActive)return;
+ nextEventTime=sec+rnd(100,220);
+ pick(EVENTS)();
+}
+function beginEv(){eventActive=true;setTimeout(()=>eventActive=false,6000)}
+function evFreeze(){beginEv();physicsOn=false;document.body.classList.add('frozen');play('zoom');
+ toast('ALL BUTTONS HAVE FROZEN');log('❄ An unnatural chill. The buttons are <b>frozen</b>.');
+ setTimeout(()=>{physicsOn=true;document.body.classList.remove('frozen');toast('The buttons have thawed. Mostly.')},6000)}
+function evRotate(){beginEv();play('whirr');toast('EVERYONE ROTATE');
+ buttons.forEach(b=>{if(b.gone)return;b.rotOff+=ri(-45,45);if(b.core)b.core.style.transform=`rotate(${b.rotOff}deg)`});
+ setTimeout(()=>buttons.forEach(b=>{if(!b.gone){b.rotOff-=ri(-45,45);if(b.core)b.core.style.transform=`rotate(${b.rotOff}deg)`}}),4000)}
+function evGiant(){beginEv();const b=pick(buttons.filter(x=>!x.gone&&!x.disabled&&x.id<500));if(!b)return;
+ b.el.classList.add('giant');play('boom');screenShake(9,.5);say(b,'“I AM ENORMOUS NOW.”',3500);
+ log(`<b>#${b.id}</b> has grown enormous.`);
+ setTimeout(()=>{b.el.classList.remove('giant');play('plop')},6000)}
+function evNoLabels(){beginEv();document.body.classList.add('no-labels');play('gasp');
+ toast('THE LABELS HAVE RESIGNED');
+ setTimeout(()=>{document.body.classList.remove('no-labels');toast('The labels returned. Union talks went well.')},7000)}
+function evChairman(){beginEv();const b=pick(buttons.filter(x=>!x.gone&&x.id<=500));
+ buttons.forEach(x=>x.el.classList.remove('chairman'));b.el.classList.add('chairman');
+ play('fanfare');confetti(b.x,b.y,70);say(b,'“I am CHAIRMAN now. Of what? YES.”',5000);
+ log(`<b>#${b.id}</b> declared itself <b>CHAIRMAN</b>. The vote was 1–0.`);meta.chairman=b.id;saveSoon()}
+function evBounce(){beginEv();play('giggle');toast('A BOUNCE HAS BROKEN OUT');
+ for(let i=0;i<25;i++){const b=pick(buttons.filter(x=>!x.gone&&!x.disabled));
+  b.bobA=12;b.bobS=2.4;setTimeout(()=>{b.bobA=4;b.bobS=1},5000)}}
+function evUpsideDown(){beginEv();play('whoosh');toast('GRAVITY IS BEING RECALIBRATED');
+ const iv=setInterval(()=>{rot+=.06;applyCamera();if(rot>=Math.PI){clearInterval(iv);
+  setTimeout(()=>{const iv2=setInterval(()=>{rot-=.06;applyCamera();if(rot<=0){rot=0;applyCamera();clearInterval(iv2)}},16)},2500)}},16)}
+function evEscape(){beginEv();play('squeak');toast('12 BUTTONS ARE LEAVING');
+ const esc=buttons.filter(b=>!b.gone&&!b.disabled);esc.sort(()=>Math.random()-.5);
+ esc.slice(0,12).forEach((b,i)=>setTimeout(()=>{
+  const ex=b.x<W/2?-400:W+400;
+  b.el.style.transition='left 1.2s ease-in,top 1.2s ease-in';b.el.style.left=(ex-b.size/2)+'px';
+  setTimeout(()=>b.el.classList.add('gone'),1200);
+  setTimeout(()=>{b.el.style.transition='left .8s ease-out,top .8s ease-out';b.el.style.left=(b.x-b.size/2)+'px';
+   b.el.classList.remove('gone');play('plop');setTimeout(()=>b.el.style.transition='',900)},10000+i*100);
+ },i*120))}
+function evNewButtons(){beginEv();play('fanfare');toast('5 NEW BUTTONS JUST ARRIVED');
+ for(let i=0;i<5;i++)spawnClone(pick(buttons.filter(x=>x.id<=500&&!x.disabled)))}
+function evVote(){beginEv();play('chime');
+ const opts=pick([
+  ['Rename the Council to “The Buttons”','Keep the current name','Add more buttons'],
+  ['Ban pressing','Mandate pressing','Pressing stays optional'],
+  ['Adopt a mascot: the potato','Adopt a mascot: the other potato','No mascot'],
+  ['Move everything 2px left','Move everything 2px right','Move nothing, blame #213']]);
+ dialog('THE COUNCIL IS VOTING',`A matter of <b>extreme unimportance</b> has reached the floor:<br><br><i>“${opts[0]}?”</i>`,opts,(i)=>{
+  closeDialog();play('fanfare');
+  toast(`RESULT: “${opts[i]}” — 100% in favor (turnout: 1 button)`);
+  log(`🗳 The Council voted. “${opts[i]}” passed unanimously. Nothing changed.`);
+ });
+ setTimeout(()=>{if($('dialogBack').style.display==='flex')closeDialog()},15000)}
+function evUpdate(){beginEv();play('zoom');
+ dialog('IMPORTANT SYSTEM UPDATE','Downloading importance… <b id="updPct">0%</b><br><br>Please do not press anything. Pressing anything is fine actually.',['OK'],[()=>closeDialog()]);
+ let p=0;const iv=setInterval(()=>{const el=$('updPct');if(!el){clearInterval(iv);return}
+  p=Math.min(100,p+ri(3,17));el.textContent=p+'%';
+  if(p>=100){clearInterval(iv);
+   setTimeout(()=>{closeDialog();toast('Update complete. Nothing changed.');play('bonk');log('⟳ A <b>system update</b> occurred. It updated nothing. As intended.')},700)}},300)}
+function evCongrats(){beginEv();play('victory');confetti(W/2,H/2,160);flashScreen(.3);
+ dialog('CONGRATULATIONS','You have accomplished <b>absolutely nothing</b>.<br><br>The Council is <i>immensely</i> proud.',['I did my best'],[()=>closeDialog()]);
+ log('🏆 The Council congratulated you for accomplishing nothing. It meant it.')}
+function evQuality(){beginEv();play('zoom');
+ dialog('BUTTON QUALITY AUDIT','Running quality audit…<br><div style="background:rgba(255,255,255,.1);border-radius:6px;height:14px;margin:10px 0;overflow:hidden"><i id="qaBar" style="display:block;height:100%;width:0%;background:#9d8cff;transition:width .4s"></i></div><span id="qaTxt" style="font-family:\'Courier New\',monospace;font-size:11px">scanning buttons…</span>',['Hold on'],[()=>closeDialog()]);
+ let p=0;const iv=setInterval(()=>{p+=9;const bar=$('qaBar');if(!bar){clearInterval(iv);return}
+  bar.style.width=Math.min(p,99)+'%';
+  if(p>=45&&p<54)$('qaTxt').textContent='found: 1 button that thinks it\'s a potato…';
+  if(p>=99){clearInterval(iv);$('qaTxt').innerHTML='<b>RESULT: 500 buttons present. 0 purposes found. Audit passed.</b>';play('chime')}},350)}
+function evDust(){beginEv();play('whoosh');
+ for(let i=0;i<40;i++)addPart({x:rnd(200,W-200),y:rnd(200,H-200),vx:rnd(-40,40),vy:rnd(-60,-10),dur:rnd(1,2),size:rnd(1,3),color:'rgba(255,255,255,.5)'})}
+function evGrow(){beginEv();play('zoom');
+ buttons.forEach(b=>{if(!b.gone&&b.core)b.core.style.transform=`rotate(${b.rotOff}deg) scale(1.32)`});
+ setTimeout(()=>buttons.forEach(b=>{if(!b.gone&&b.core)b.core.style.transform=`rotate(${b.rotOff}deg)`}),3200)}
+function evAmnesia(){beginEv();play('gasp');document.body.classList.add('amnesia');
+ toast('THE BUTTONS HAVE FORGOTTEN THEIR NAMES');
+ setTimeout(()=>{document.body.classList.remove('amnesia');toast('The names returned. Nobody asked how.')},6500)}
+function evClone(){beginEv();spawnClone(pick(buttons.filter(x=>!x.gone&&x.id<=500&&!x.disabled)))}
+
+/* ============ DIALOG ============ */
+function dialog(title,body,labels,handlers){
+ $('dlgTitle').textContent=title;$('dlgBody').innerHTML=body;
+ const bw=$('dlgBtns');bw.innerHTML='';
+ labels.forEach((l,i)=>{const b=document.createElement('button');b.className='chip';b.textContent=l;
+  b.onclick=()=>handlers[i]&&handlers[i](i);bw.appendChild(b)});
+ $('dialogBack').style.display='flex';
+}
+function closeDialog(){$('dialogBack').style.display='none'}
+$('dialogBack').addEventListener('click',e=>{if(e.target===$('dialogBack'))closeDialog()});
+
+/* ============ DEMO MODE ============ */
+function demoMode(){
+ if(!entered||demoRunning||eventActive)return;
+ demoRunning=true;unlock('demo','DEMO MODE — you cheated, beautifully');
+ toast('DEMO MODE — WATCH THE BUTTONS TALK',2800);play('chime');
+ const seq=[17,348,91,203];let i=0;
+ (function step(){
+  if(i>=seq.length){toast('That was 1% of the Council.',3400);demoRunning=false;return}
+  const b=byId[seq[i++]];
+  if(!b||b.gone){step();return}
+  panTo(b.x,b.y);play('zoom');
+  setTimeout(()=>{clickBtn(b);setTimeout(step,1500)},800);
+ })();
+}
+$('demoBtn').onclick=demoMode;
+
+/* ============ INPUT ============ */
+const cursor={sx:innerWidth/2,sy:innerHeight/2};
+let dragStart=null,dragMoved=false;
+worldEl.addEventListener('pointerdown',e=>{
+ if(!entered)return;
+ dragStart={x:e.clientX,y:e.clientY,px:pan.x,py:pan.y};dragMoved=false;camT=null;
+ worldEl.classList.add('dragging');
+});
+addEventListener('pointermove',e=>{
+ cursor.sx=e.clientX;cursor.sy=e.clientY;lastAction=Date.now();
+ if(dragStart){
+  const dx=e.clientX-dragStart.x,dy=e.clientY-dragStart.y;
+  if(Math.hypot(dx,dy)>6)dragMoved=true;
+  if(dragMoved){pan.x=dragStart.px+dx;pan.y=dragStart.py+dy;applyCamera()}
+ }
+ tip.style.left=Math.min(e.clientX+16,innerWidth-260)+'px';
+ tip.style.top=(e.clientY+18)+'px';
+});
+addEventListener('pointerup',()=>{
+ if(dragMoved)suppressClick=true,setTimeout(()=>suppressClick=false,60);
+ dragStart=null;worldEl.classList.remove('dragging');
+});
+worldEl.addEventListener('wheel',e=>{
+ if(!entered)return;e.preventDefault();
+ setZoom(scale*(e.deltaY<0?1.12:.9),e.clientX,e.clientY);lastAction=Date.now();
+},{passive:false});
+room.addEventListener('click',e=>{
+ const el=e.target.closest('.btn');if(!el)return;
+ const b=byId[el.dataset.id];if(b)clickBtn(b);
+});
+room.addEventListener('contextmenu',e=>{
+ const el=e.target.closest('.btn');if(!el)return;
+ e.preventDefault();const b=byId[el.dataset.id];if(b)openInspector(b);
+});
+room.addEventListener('mouseover',e=>{
+ const el=e.target.closest('.btn');if(!el)return;
+ const b=byId[el.dataset.id];if(!b)return;
+ el.classList.add('hov');tip.style.display='block';
+ tip.innerHTML=`<b>#${b.id} · ${b.name}</b><br><span class="fl">${b.disabled?'it is retired. let it rest.':pick(FLAVOR[b.pers]||['it awaits purpose. it will wait forever.','it counts your clicks when you blink.','it was here before you.'])}</span><br>mood: ${b.mood[0]} · presses: ${b.clicks}`;
+ if(b.pers==='shy')animate(b,{tx:rnd(-30,30),ty:rnd(-20,20)},.4);
+});
+room.addEventListener('mouseout',e=>{
+ const el=e.target.closest('.btn');if(!el)return;
+ el.classList.remove('hov');tip.style.display='none';
+});
+$('minimap').addEventListener('click',e=>{
+ const r=e.target.getBoundingClientRect();
+ const wx=(e.clientX-r.left)/r.width*W,wy=(e.clientY-r.top)/r.height*H;
+ panTo(wx,wy);play('tick');
+});
+$('sndBtn').onclick=()=>{muted=!muted;$('sndBtn').textContent='SOUND: '+(muted?'OFF':'ON');
+ if(ac)master.gain.value=muted?0:volume;saveSoon()};
+$('vol').oninput=e=>{volume=e.target.value/100;if(ac&&!muted)master.gain.value=volume;saveSoon()};
+$('vol').value=Math.round(volume*100);
+if(muted)$('sndBtn').textContent='SOUND: OFF';
+$('helpBtn').onclick=()=>dialog('HELP (such as it is)',
+ `<b>Drag</b> to pan · <b>Scroll</b> to zoom · <b>Click</b> buttons · <b>Right-click</b> a button for its file.<br><br>
+ There are <b>no objectives</b>. Buttons affect other buttons. Chains happen.<br><br>
+ 📷 <b>PHOTO BOOTH:</b> your face becomes a floating Council member. Drag it. Fling it. It judges back.<br><br>
+ <span class="kbd">↑↑↓↓←→←→BA</span> might do something. Numbers might mean something.`,
+ ['Understood'],[()=>closeDialog()]);
+$('resetBtn').onclick=()=>dialog('RESET THE COUNCIL?','All presses, secrets, offspring and photos will be forgotten.',['RESET','Keep my shame'],[
+ ()=>{localStorage.removeItem('council_v2');localStorage.removeItem('council_v3x');location.reload()},()=>closeDialog()]);
+
+/* ============ IDLE / PANIC ============ */
+setInterval(()=>{
+ if(!entered)return;
+ const idle=(Date.now()-lastAction)/1000;
+ if(idle>20&&idle<25){whisperAt('…are you still there?');play('chime');lastAction-=5}
+ else if(idle>40&&idle<46){whisperAt('…hello…?');play('snore');
+  const b=pick(buttons.filter(x=>!x.gone));say(b,'“zzz… quiet session today…”',4000)}
+ const t=performance.now();
+ while(clickHist.length&&t-clickHist[0]>2000)clickHist.shift();
+ if(clickHist.filter(x=>t-x<1000).length>=7&&!window._panicking){
+  window._panicking=true;log('⚠ <b>THE COUNCIL IS PANICKING.</b>');
+  for(let i=0;i<6;i++){const b=pick(buttons.filter(x=>!x.gone&&!x.disabled));
+   animate(b,{tx:rnd(-60,60),ty:rnd(-60,60)},.6);play('squeak')}
+  setTimeout(()=>window._panicking=false,2000);
+ }
+ if(clickHist.length>=12&&!window._natural){window._natural=true;
+  toast('BUTTONS, ACT NATURAL');physicsOn=false;
+  setTimeout(()=>{physicsOn=true;window._natural=false},2000)}
+ maybeEvent();
+},4000);
+setInterval(()=>{if(entered)tickerSet(pick(TICKS)+(meta.chairman?` (Chairman: #${meta.chairman})`:''))},16000);
+
+/* ============ MAIN LOOP ============ */
+let lastT=now();
+const proximityList=[];
+function buildProximityList(){
+ proximityList.length=0;
+ buttons.forEach(b=>{
+  if(b.pers==='shy'||b.pers==='nervous'||b.pers==='paranoid'||b.pupil||b.id===84)b.prox=true;
+  if(b.prox)proximityList.push(b);
+ });
+}
+function frame(){
+ const t=now(),dt=Math.min(.05,t-lastT);lastT=t;
+ if(entered){
+  if(t<shakeUntil){shake.x=rnd(-1,1)*shakePow;shake.y=rnd(-1,1)*shakePow;shakePow*=.94}
+  else{shake.x=0;shake.y=0}
+  if(camT){
+   pan.x+=(camT.x-pan.x)*.07;pan.y+=(camT.y-pan.y)*.07;
+   if(Math.hypot(camT.x-pan.x,camT.y-pan.y)<3)camT=null;
+  }
+  applyCamera();
+  const cw=screenToWorld(cursor.sx,cursor.sy);
+  for(const b of proximityList){
+   if(b.gone||b.disabled)continue;
+   const dx=cw.x-b.x,dy=cw.y-b.y,d=Math.hypot(dx,dy)||1;
+   if(b.pupil&&d<500){
+    const a=Math.atan2(dy,dx),m=Math.min(d/40,7);
+    b.pupil.style.transform=`translate(${Math.cos(a)*m}px,${Math.sin(a)*m}px)`;
+   }
+   if(b.id===84&&!b.dodged&&d<110&&(!b._dodgeTm||t-b._dodgeTm>1)){
+    b.dodges=(b.dodges||0);
+    if(b.dodges<3){
+     b.dodges++;b._dodgeTm=t;
+     const a=Math.atan2(-dy,-dx);
+     b.tx=Math.cos(a)*130;b.ty=Math.sin(a)*130;activeAnim.add(b);
+     say(b,pick(['“nope.”','“too slow.”','“I am a button, not a volunteer.”','“try again.”']),1600);
+     play('squeak');
+    }else{b.dodged=true;say(b,'“fine. FINE. press me.”',2200)}
+   }
+   else if(b.pers==='shy'&&d<110){b.tx=-dx/d*(110-d)*.8;b.ty=-dy/d*(110-d)*.8;activeAnim.add(b);b._flee=true}
+   else if(b.pers==='nervous'&&d<80){b.tx=Math.sin(t*40)*3;b.ty=Math.cos(t*33)*3;activeAnim.add(b);b._flee=true}
+   else if(b.pers==='paranoid'&&d<90){const a2=Math.atan2(-dy,-dx);b.tx=Math.cos(a2)*(90-d)*.5;b.ty=Math.sin(a2)*(90-d)*.5;activeAnim.add(b);b._flee=true}
+   else if(b._flee){b.tx=0;b.ty=0;b._flee=false}
+  }
+  if(physicsOn){
+   for(const b of activeAnim){
+    if(b.gone){activeAnim.delete(b);continue}
+    const k=90,dmp=8;
+    const ax=(b.tx-b.ox)*k-b.vx*dmp,ay=(b.ty-b.oy)*k-b.vy*dmp;
+    b.vx+=ax*dt;b.vy+=ay*dt;b.ox+=b.vx*dt;b.oy+=b.vy*dt;
+    const settled=Math.abs(b.tx-b.ox)<.6&&Math.abs(b.ty-b.oy)<.6&&Math.abs(b.vx)<2&&Math.abs(b.vy)<2;
+    b.el.style.transform=`translate(${b.ox.toFixed(1)}px,${b.oy.toFixed(1)}px)`;
+    if(settled&&!b._flee){b.ox=0;b.oy=0;b.vx=0;b.vy=0;b.el.style.transform='';activeAnim.delete(b)}
+   }
+  }
+  if(physicsOn){
+   for(const p of photos){
+    if(p._drag)continue;
+    p._turnTm=p._turnTm||t+rnd(3,8);
+    if(t>p._turnTm){p.vx=rnd(-70,70);p.vy=rnd(-70,70);p._turnTm=t+rnd(3,8)}
+    p.x+=p.vx*dt;p.y+=p.vy*dt;
+    if(p.x<80){p.x=80;p.vx=Math.abs(p.vx)}if(p.x>W-80){p.x=W-80;p.vx=-Math.abs(p.vx)}
+    if(p.y<80){p.y=80;p.vy=Math.abs(p.vy)}if(p.y>H-80){p.y=H-80;p.vy=-Math.abs(p.vy)}
+    if(Math.abs(p.vx)+Math.abs(p.vy)>200){p.vx*=.985;p.vy*=.985}
+    const bob=Math.sin(t*1.4+p.bobP)*4,tilt=Math.sin(t*.7+p.bobP)*p.spin;
+    p.el.style.left=(p.x-p.size/2)+'px';p.el.style.top=(p.y-p.size/2+bob)+'px';
+    p.el.style.transform=`rotate(${tilt.toFixed(1)}deg)`;
+   }
+  }
+  drawFX();
+ }
+ requestAnimationFrame(frame);
+}
+
+/* ============ MINIMAP ============ */
+const mm=$('minimap'),mctx=mm.getContext('2d');
+setInterval(()=>{
+ if(!entered)return;
+ mctx.clearRect(0,0,180,120);
+ mctx.fillStyle='rgba(200,195,255,.5)';
+ buttons.forEach(b=>{if(!b.gone)mctx.fillRect(b.x/W*180-.75,b.y/H*120-.75,1.5,1.5)});
+ mctx.fillStyle='#ffd76a';
+ photos.forEach(p=>mctx.fillRect(p.x/W*180-2,p.y/H*120-2,4,4));
+ const vw=innerWidth/scale,vh=innerHeight/scale;
+ mctx.strokeStyle='rgba(255,255,255,.85)';mctx.lineWidth=1;
+ mctx.strokeRect(-pan.x/scale/W*180,-pan.y/scale/H*120,vw/W*180,vh/H*120);
+},260);
+
+/* ============ PERSISTENCE ============ */
+let saveTm=null;
+function saveSoon(){clearTimeout(saveTm);saveTm=setTimeout(save,1200)}
+function save(){
+ try{localStorage.setItem('council_v2',JSON.stringify({totalClicks,muted,volume,secrets:[...secretsFound],chairman:meta.chairman||null}))}catch(e){}
+}
+setInterval(save,6000);
+
+/* ============ BOOT ============ */
+genButtons();
+buttons.forEach(b=>room.appendChild(makeEl(b)));
+if(meta.chairman&&byId[meta.chairman])byId[meta.chairman].el.classList.add('chairman');
+buildProximityList();
+requestAnimationFrame(frame);
+tickerSet('The Council is assembling…');
+addEventListener('resize',applyCamera);
+$('intro').addEventListener('click',()=>{
+ entered=true;ensureAC();if(ac&&ac.state==='suspended')ac.resume();
+ $('intro').style.opacity=0;setTimeout(()=>$('intro').remove(),850);
+ scale=.42;panTo(W/2,H/2-150);applyCamera();play('fanfare');
+ const iv=setInterval(()=>{scale+=.006;if(scale>=.52){scale=.52;clearInterval(iv)}},16);
+ log('Session opened. <b>500 buttons</b> present. Purpose: pending.');
+ tickerSet('The Council is in session. It accomplishes nothing, beautifully.');
+ setTimeout(()=>say(byId[17],'“Welcome. Press things. Consequences are included.”',5000),1600);
+ setTimeout(()=>toast('TIP: press ▶ DEMO MODE, or just start clicking'),7000);
+ statsUpdate();
+ if(totalClicks>0)toast(`Welcome back. ${totalClicks.toLocaleString()} presses on record.`);
+});
+</script>
+
+<script>
+/* ================= COUNCIL v3 PATCH =================
+   Pointlessness Engine · Gazette · Weather · Search · Hourglass · Floppy Save
+   Printer + Permits · Button Store · The Door · Screensaver · Wallpaper
+   The Stalker · Cursor Trail · Scoreboard · Zoom controls · Guided Tour */
+(function(){
+"use strict";
+if(window.__CB_V3)return; window.__CB_V3=1;
+
+const cb$=id=>document.getElementById(id);
+const cbRnd=(a,b)=>a+Math.random()*(b-a);
+const cbRi=(a,b)=>Math.floor(a+Math.random()*(b-a+1));
+const cbPick=a=>a[Math.floor(Math.random()*a.length)];
+const cbClamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+const cbLoad=()=>{try{return JSON.parse(localStorage.getItem('council_v3x'))||{}}catch(e){return{}}};
+const cbSaveP=()=>{try{localStorage.setItem('council_v3x',JSON.stringify(CB.prefs))}catch(e){}};
+const CB={prefs:cbLoad(),pt:0,f85:false,f100:false,wallet:(function(){try{return (JSON.parse(localStorage.getItem('council_v2'))||{}).totalClicks||0}catch(e){return 0}})()};
+
+/* ---------- CSS ---------- */
+const css=`
+#cbDock{position:fixed;left:50%;bottom:12px;transform:translateX(-50%);z-index:206;display:flex;align-items:center;gap:6px;
+ background:rgba(12,12,18,.92);border:1px solid rgba(255,255,255,.18);border-radius:14px;padding:7px 10px;
+ box-shadow:0 8px 30px rgba(0,0,0,.6);max-width:96vw;flex-wrap:wrap;justify-content:center}
+.cbChip{font-family:"Courier New",monospace;font-size:10px;letter-spacing:1px;color:#e8e4da;cursor:pointer;
+ background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.14);border-radius:7px;padding:5px 8px;white-space:nowrap;transition:background .15s}
+.cbChip:hover{background:rgba(255,255,255,.18)}
+.cbSep{width:1px;height:18px;background:rgba(255,255,255,.2)}
+#cbMeter.hot{border-color:#ffd76a;color:#ffd76a;box-shadow:0 0 10px rgba(255,215,106,.5)}
+#cbClock{font-family:"Courier New",monospace;font-size:10px;opacity:.6;letter-spacing:1px;cursor:pointer;white-space:nowrap}
+#cbScore{position:fixed;left:50%;bottom:66px;transform:translateX(-50%);z-index:206;font-family:"Courier New",monospace;
+ font-size:10px;color:#ffd76a;letter-spacing:1px;text-shadow:0 1px 4px #000;cursor:pointer;opacity:.9}
+#cbSearch{font-family:"Courier New",monospace;font-size:11px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.16);
+ color:#e8e4da;border-radius:6px;padding:5px 9px;width:150px;outline:none}
+#cbSearch:focus{border-color:#9d8cff}
+#cbSugg{position:fixed;z-index:220;background:rgba(12,12,18,.96);border:1px solid rgba(255,255,255,.2);border-radius:8px;
+ display:none;max-height:200px;overflow:auto;min-width:210px;box-shadow:0 8px 30px rgba(0,0,0,.6)}
+#cbSugg div{font-family:"Courier New",monospace;font-size:11px;padding:6px 10px;cursor:pointer;color:#e8e4da}
+#cbSugg div:hover{background:rgba(157,140,255,.25)}
+#cbZoom{position:fixed;right:14px;bottom:150px;z-index:206;display:flex;flex-direction:column;gap:4px}
+#cbZoom button{width:30px;height:30px;border-radius:8px;border:1px solid rgba(255,255,255,.2);background:rgba(12,12,18,.9);
+ color:#e8e4da;font-size:14px;cursor:pointer}
+#cbZoom button:hover{background:rgba(255,255,255,.15)}
+#cbWeather{position:fixed;top:46px;left:50%;transform:translateX(-50%);z-index:205;font-family:"Courier New",monospace;
+ font-size:10px;letter-spacing:1px;color:#a9c4d8;opacity:.85;cursor:pointer;text-shadow:0 1px 4px #000;white-space:nowrap}
+#cbGaz{position:fixed;left:50%;bottom:96px;transform:translateX(-50%);z-index:205;font-family:Georgia,serif;font-style:italic;
+ font-size:12px;color:#d8d2c4;opacity:.75;cursor:pointer;text-shadow:0 1px 4px #000;white-space:nowrap;max-width:70vw;overflow:hidden;text-overflow:ellipsis}
+#cbGaz.flash{animation:cbGz .5s}
+@keyframes cbGz{0%{opacity:0;transform:translateX(-50%) translateY(6px)}100%{opacity:.75;transform:translateX(-50%)}}
+#cbWallLayer{position:absolute;inset:0;border-radius:40px;pointer-events:none;z-index:0}
+#cbPermit{position:fixed;left:14px;bottom:130px;z-index:230;background:#f4f0e6;color:#1a1a22;font-family:"Courier New",monospace;
+ font-size:11px;padding:10px 12px;border-radius:6px;box-shadow:0 6px 24px rgba(0,0,0,.6);cursor:pointer;max-width:230px;line-height:1.5;
+ transform:rotate(-2deg);border:1px dashed #7a7a6a}
+#cbPaper{position:fixed;left:50%;top:-160px;z-index:340;width:230px;height:150px;background:#f4f0e6;border-radius:4px;
+ box-shadow:0 10px 30px rgba(0,0,0,.5);transform:translateX(-50%);transition:top 2.4s cubic-bezier(.3,.6,.4,1);padding:12px;
+ font-family:"Courier New",monospace;font-size:10px;color:#333;line-height:1.7}
+#cbSS{position:fixed;inset:0;z-index:160;background:rgba(5,5,9,.97);display:none}
+#cbSSLogo{position:absolute;font-family:Georgia,serif;font-weight:bold;letter-spacing:2px;font-size:20px;color:#9d8cff;
+ text-shadow:0 0 18px rgba(157,140,255,.8);white-space:nowrap}
+#cbSSHint{position:absolute;bottom:30px;left:50%;transform:translateX(-50%);font-family:"Courier New",monospace;font-size:11px;opacity:.5;color:#e8e4da}
+#cbStalker{position:absolute;width:46px;height:46px;z-index:45;cursor:pointer;transition:opacity .4s;opacity:.85}
+#cbStalker .core{border-radius:50%;width:100%;height:100%;background:radial-gradient(circle at 34% 30%,#4a2028,#1c0e12 75%);
+ color:#ff9aa8;border:2px solid #663040;box-shadow:0 0 14px rgba(255,80,110,.4);display:flex;align-items:center;justify-content:center;font-size:15px}
+#cbSpot{position:absolute;width:10px;height:10px;border:3px solid #ffd76a;border-radius:50%;pointer-events:none;z-index:80;
+ animation:cbSpotA 1.1s ease-out infinite;transform:translate(-50%,-50%)}
+@keyframes cbSpotA{0%{width:20px;height:20px;opacity:1}100%{width:150px;height:150px;opacity:0}}
+.cbDot{position:fixed;width:6px;height:6px;border-radius:50%;background:#c9b8ff;pointer-events:none;z-index:240;
+ animation:cbDotA .55s ease-out forwards}
+@keyframes cbDotA{0%{opacity:.8;transform:scale(1)}100%{opacity:0;transform:scale(.2)}}
+#cbPotato{position:fixed;top:45%;left:-80px;font-size:54px;z-index:340;pointer-events:none;animation:cbPot 4s linear forwards}
+@keyframes cbPot{0%{left:-80px;transform:rotate(0)}100%{left:105vw;transform:rotate(720deg)}}
+#cbDoorOv{position:fixed;inset:0;z-index:520;background:#000;display:none;align-items:center;justify-content:center;
+ flex-direction:column;gap:14px;opacity:0;transition:opacity .6s;color:#d8d2c4;text-align:center}
+#cbDoorOv .big{font-size:20px;letter-spacing:4px;font-family:Georgia,serif}
+#cbDoorOv .btns3{font-size:40px;letter-spacing:18px;opacity:.8}
+#cbDoorOv .tiny{font-family:"Courier New",monospace;font-size:11px;opacity:.6}
+#cbSand{width:60px;height:90px;margin:6px auto;position:relative}
+#cbSand .top,#cbSand .bot{position:absolute;left:10px;width:40px;height:40px;border:2px solid #d8d2c4;overflow:hidden}
+#cbSand .top{top:0;border-radius:20px 20px 0 0;border-bottom:none;border-top:2px solid #d8d2c4}
+#cbSand .bot{bottom:0;border-radius:0 0 20px 20px;border-top:none}
+#cbSand i{position:absolute;left:0;right:0;background:#ffd76a;display:block}
+#cbSand .top i{bottom:0;height:30%}#cbSand .bot i{top:0;height:70%}
+#cbSand .stream{position:absolute;left:29px;top:40px;width:2px;height:12px;background:#ffd76a;animation:cbSandS 1s linear infinite}
+@keyframes cbSandS{0%,100%{opacity:.4}50%{opacity:1}}
+.cbBar{background:rgba(255,255,255,.1);border-radius:6px;height:12px;overflow:hidden;margin:8px 0}
+.cbBar i{display:block;height:100%;background:#9d8cff;width:0%}
+@media (max-width:1100px){#logwrap,#ticker,#cbGaz{display:none}}
+@media (max-width:900px){#cbWeather{display:none}#cbClock{display:none}}
+`;
+const st=document.createElement('style');st.textContent=css;document.head.appendChild(st);
+
+/* ---------- pointlessness engine ---------- */
+function bump(n){
+ CB.pt=cbClamp(CB.pt+n,0,100);
+ const m=cb$('cbMeter');if(m){m.textContent='Pointlessness: '+Math.round(CB.pt)+'%';m.classList.toggle('hot',CB.pt>=85)}
+ if(CB.pt>=85&&!CB.f85){CB.f85=true;toast('⚠ EXTREME POINTLESSNESS DETECTED. WELL DONE.');confetti(W/2,H/2,90);play('fanfare')}
+ if(CB.pt>=100&&!CB.f100){CB.f100=true;
+  dialog('MAXIMUM POINTLESSNESS','The Council has measured your session at <b>100% pointlessness</b>.<br><br>This is the highest honor it can bestow, which is not saying much.',['I accept'],()=>closeDialog());
+  confetti(W/2,H/2,200);screenShake(8,.5);play('victory');unlock('maxpoint','100% POINTLESSNESS — a perfect score of nothing');}
+}
+setInterval(()=>{if(!entered)return;bump(cbRi(-1,2));if(Math.random()<.3)bump(1)},2000);
+bump(3);
+
+/* ---------- dock + chrome ---------- */
+const dock=document.createElement('div');dock.id='cbDock';
+dock.innerHTML=`<div class="cbChip" id="cbHour">⏳ <span id="cbHourT">--:--</span></div>
+<div class="cbChip" id="cbSave">💾 SAVE</div><div class="cbChip" id="cbPrint">🖨 PRINT</div>
+<div class="cbChip" id="cbStore">🛒 STORE</div><div class="cbChip" id="cbWall">🖼 WALLPAPER</div>
+<div class="cbChip" id="cbDoor">🚪 DOOR</div><div class="cbChip" id="cbSS">📺 SAVER</div>
+<div class="cbChip" id="cbTrail">👆 TRAIL: OFF</div><div class="cbSep"></div>
+<div class="cbChip" id="cbMeter">Pointlessness: 3%</div>
+<div id="cbClock" title="the only accurate information here">--:--:-- · TIME IS PASSING</div>`;
+document.body.appendChild(dock);
+const score=document.createElement('div');score.id='cbScore';score.textContent='🏆 RANK: #1 OF ALL USERS (users: 1)';document.body.appendChild(score);
+const wx=document.createElement('div');wx.id='cbWeather';document.body.appendChild(wx);
+const gaz=document.createElement('div');gaz.id='cbGaz';document.body.appendChild(gaz);
+const zoom=document.createElement('div');zoom.id='cbZoom';
+zoom.innerHTML='<button id="cbZin">＋</button><button id="cbZout">－</button><button id="cbZhome">⌂</button>';
+document.body.appendChild(zoom);
+cb$('toastwrap').style.top='74px';
+
+/* patch existing actions so they feed the Pointlessness Engine */
+const _unlock=unlock,_ss=screenShake,_demo=demoMode,_booth=openBooth;
+unlock=(k,l)=>{_unlock(k,l);bump(8)};
+screenShake=(p,d)=>{_ss(p,d);bump(2)};
+demoMode=()=>{_demo();bump(4)};
+openBooth=()=>{_booth();bump(2)};
+cb$('demoBtn').onclick=demoMode; cb$('boothBtn').onclick=openBooth;
+cb$('helpBtn').onclick=()=>dialog('HELP (now 40% more useless)',
+ `<b>Drag</b> pan · <b>Scroll</b> zoom · <b>Click</b> buttons · <b>Right-click</b> a button for its file.<br><br>
+  <b>🔍 Search</b> (top bar) finds any button. <b>＋－⌂</b> (bottom-right) zoom.<br>
+  <b>Bottom dock:</b> hourglass, floppy save, printer, store, wallpaper, door, screensaver, trail.<br><br>
+  📷 Your face can join the Council. ▶ DEMO MODE shows the buttons talking.<br>
+  <span class="kbd">↑↑↓↓←→←→BA</span> might do something. The stalker is not in the search index. He refused.`,
+ ['Understood'],()=>closeDialog());
+
+/* zoom buttons */
+cb$('cbZin').onclick=()=>{setZoom(scale*1.25,innerWidth/2,innerHeight/2);play('zoom');bump(1)};
+cb$('cbZout').onclick=()=>{setZoom(scale*.8,innerWidth/2,innerHeight/2);play('zoom');bump(1)};
+cb$('cbZhome').onclick=()=>{scale=.5;panTo(W/2,H/2-150);play('zoom');bump(1)};
+
+/* ---------- clock + scoreboard ---------- */
+setInterval(()=>{const c=cb$('cbClock');if(c)c.textContent=new Date().toLocaleTimeString()+' · TIME IS PASSING'},1000);
+cb$('cbClock').onclick=()=>{toast('yes. it is.');play('bonk')};
+score.onclick=()=>{score.textContent='🏆 RANK: #2 (users: 1)';play('gasp');
+ setTimeout(()=>{score.textContent='🏆 RANK: #1 OF ALL USERS (users: 1)';toast('Recount complete. You are still #1.');play('chime')},900)};
+
+/* ---------- gazette ---------- */
+const HEADLINES=['LOCAL BUTTON STILL USELESS, SAYS STUDY','AREA VISITOR PRESSES BUTTON, FEELS SOMETHING',
+'COUNCIL DENIES EXISTENCE OF COUNCIL','HOURGLASS ANNUAL REVIEW: SAND STILL FALLING','POTATO RE-ELECTED UNANIMOUSLY',
+"NOTHING HAPPENED TODAY AGAIN, REPORTS FIND",'DO NOT PRESS REMAINS UNPRESSED, OFFICIALS SMUG','FLAT BUTTON DEFENDS LIFESTYLE CHOICES',
+'CHAIRMAN ANNOUNCES NEW CHAIRMAN, IS SAME BUTTON','SUBCOMMITTEE ON PRESSING DISBANDS, FORMS NEW SUBCOMMITTEE','COUNCIL MINUTES LOST. WERE BLANK ANYWAY'];
+const HEADLINES_PHOTO=['PHOTO OF HUMAN DESCRIBED AS “DISTRACTING” BY BUTTONS','HUMAN IN PHOTO REFUSES TO COMMENT','BUTTONS ASK PHOTO TO STOP BLINKING'];
+function gazTick(){if(!entered)return;gaz.textContent='📰 '+cbPick(photos.length&&Math.random()<.4?HEADLINES_PHOTO:HEADLINES);
+ gaz.classList.remove('flash');void gaz.offsetWidth;gaz.classList.add('flash')}
+setInterval(gazTick,18000);gazTick();
+gaz.onclick=()=>{toast('EXTRA! EXTRA! Nothing happened!');play('giggle');bump(2)};
+
+/* ---------- weather ---------- */
+const WCODE=c=>c===0?'clear skies':c<4?'partly cloudy':c<49?'fog':c<68?'rain':c<78?'snow':c<83?'showers':c<96?'a storm':'weather';
+let wxBusy=false;
+wx.textContent='☀ WEATHER: buttons (click for the real sky)';
+wx.onclick=()=>{
+ if(wxBusy)return;wxBusy=true;bump(2);
+ if(!navigator.geolocation||location.protocol==='file:'){wx.textContent='☀ WEATHER: buttons — the sky refused to answer';wxBusy=false;return}
+ navigator.geolocation.getCurrentPosition(p=>{
+  fetch(`https://api.open-meteo.com/v1/forecast?latitude=${p.coords.latitude}&longitude=${p.coords.longitude}&current_weather=true`)
+  .then(r=>r.json()).then(d=>{const t=Math.round(d.current_weather.temperature),c=d.current_weather.weathercode;
+   wx.textContent=`☀ REAL WEATHER: ${t}°C, ${WCODE(c)} — Council opinion: ${t>30?'too hot for pressing':t<0?'buttons are brittle, press gently':'acceptable pressing conditions'}`;
+   play('chime')}).catch(()=>{wx.textContent='☀ WEATHER: unknown. The Council doesn\'t believe in weather anyway.'})
+  .finally(()=>wxBusy=false);
+ },()=>{wx.textContent='☀ WEATHER: buttons (location denied — fair enough)';wxBusy=false},{timeout:6000});
+};
+
+/* ---------- search ---------- */
+const inp=document.createElement('input');inp.id='cbSearch';inp.placeholder='🔍 find a button…';
+const statsEl=cb$('stats');statsEl.parentNode.insertBefore(inp,statsEl);
+const sugg=document.createElement('div');sugg.id='cbSugg';document.body.appendChild(sugg);
+let suggItems=[];
+function cbSearch(q){
+ q=q.trim().toLowerCase();sugg.innerHTML='';suggItems=[];
+ if(!q){sugg.style.display='none';return}
+ if(q.includes('purpose')){sugg.innerHTML='<div>0 results for “purpose”. obviously.</div>';sugg.style.display='block';return}
+ if(q.includes('potato'))q='';
+ buttons.forEach(b=>{if(b.gone)return;
+  const hay=('#'+b.id+' '+b.name+' '+(b.pers||'')).toLowerCase();
+  if(hay.includes(q))suggItems.push({b})});
+ photos.forEach(p=>{if(('#'+p.id+' '+p.name).toLowerCase().includes(q))suggItems.push({p})});
+ suggItems=suggItems.slice(0,7);
+ suggItems.forEach(it=>{const d=document.createElement('div');
+  d.textContent=it.b?`#${it.b.id} · ${it.b.name}`:`#${it.p.id} · ${it.p.name} (photo)`;
+  d.onmousedown=e=>{e.preventDefault();cbGo(it)};sugg.appendChild(d)});
+ sugg.style.display=suggItems.length?'block':'none';
+ if(!suggItems.length){sugg.innerHTML='<div>no such button. it is hiding.</div>';sugg.style.display='block'}
+}
+function cbSpot(x,y){const s=document.createElement('div');s.id='cbSpot';
+ s.style.left=(x-5)+'px';s.style.top=(y-5)+'px';stage.appendChild(s);setTimeout(()=>s.remove(),2300)}
+function cbGo(it){sugg.style.display='none';inp.value='';inp.blur();
+ if(it.b){panTo(it.b.x,it.b.y);cbSpot(it.b.x,it.b.y);play('chime');bump(2);
+  setTimeout(()=>say(it.b,cbPick(['“you called?”','“found me. congratulations?”','“I was hiding on purpose.”','“searched and found. still useless.”']),2600),700)}
+ else{panTo(it.p.x,it.p.y);cbSpot(it.p.x,it.p.y);play('chime');bump(2)}}
+inp.addEventListener('input',()=>cbSearch(inp.value));
+inp.addEventListener('keydown',e=>{if(e.key==='Enter'&&suggItems.length)cbGo(suggItems[0]);
+ if(e.key==='Escape'){sugg.style.display='none';inp.blur()}});
+inp.addEventListener('blur',()=>setTimeout(()=>sugg.style.display='none',150));
+
+/* ---------- hourglass ---------- */
+CB.nextFlip=CB.prefs.nextFlip||Date.now()+86400000;CB.flips=CB.prefs.flips||0;
+function fmt(ms){ms=Math.max(0,ms);const h=Math.floor(ms/3.6e6),m=Math.floor(ms%3.6e6/6e4),s=Math.floor(ms%6e4/1000);
+ return (h<10?'0':'')+h+':'+(m<10?'0':'')+m+':'+(s<10?'0':'')+s}
+setInterval(()=>{const el=cb$('cbHourT');if(el)el.textContent=fmt(CB.nextFlip-Date.now())},1000);
+cb$('cbHour').onclick=()=>{
+ dialog('⏳ THE HOURGLASS',
+  `<div id="cbSand"><div class="top"><i></i></div><div class="stream"></div><div class="bot"><i></i></div></div>
+   It contains exactly one day of sand. It is not for you.<br>Flips so far: <b>${CB.flips}</b> · next flip in <b>${fmt(CB.nextFlip-Date.now())}</b>
+   <div class="cbBar"><i id="cbFF"></i></div>`,
+  ['FAST-FORWARD (3s)','CLOSE'],[()=>{const bar=cb$('cbFF');let p=0;
+   const iv=setInterval(()=>{p+=3;if(bar)bar.style.width=p+'%';
+    if(p>=100){clearInterval(iv);CB.flips++;CB.prefs.flips=CB.flips;CB.nextFlip=Date.now()+86400000;CB.prefs.nextFlip=CB.nextFlip;cbSaveP();
+     play('whirr');confetti(W/2,H/2,60);toast('⏳ THE HOURGLASS FLIPPED. Nothing changed.');
+     log('⏳ The hourglass was flipped early. It contained the same sand.');
+     if(CB.flips>=7)unlock('flipmaster','FAST-FLIPPED THE HOURGLASS 7 TIMES — time means nothing to you');
+     closeDialog()}},90)},()=>closeDialog()]);
+};
+
+/* ---------- floppy save ---------- */
+cb$('cbSave').onclick=()=>{
+ toast('💾 Saving to floppy…');play('whirr');
+ setTimeout(()=>play('whirr'),900);
+ const bar=document.createElement('div');bar.style.cssText='position:fixed;left:50%;top:90px;transform:translateX(-50%);width:220px;z-index:400;background:rgba(12,12,18,.95);padding:10px;border:1px solid rgba(255,255,255,.2);border-radius:8px';
+ bar.innerHTML='<i id="cbSavB" class="cbBar" style="transition:width 2.3s"></i><div style="font-family:\'Courier New\',monospace;font-size:10px;margin-top:5px;color:#e8e4da">writing 0 files to A:\\ …</div>';
+ document.body.appendChild(bar);
+ setTimeout(()=>{const b=cb$('cbSavB');if(b)b.style.width='100%'},50);
+ setTimeout(()=>{bar.remove();play('chime');toast('💾 Saved to floppy. (There is no floppy.)');bump(3);
+  const ej=document.createElement('div');ej.className='cbChip';ej.textContent='⏏ EJECT';
+  cb$('cbDock').appendChild(ej);
+  ej.onclick=()=>{ej.remove();play('whoosh');toast('⏏ Ejected. Nothing was on it.');bump(2);
+   unlock('floppy','TRUSTED THE FLOPPY — your data is now conceptual')};
+ },2600);
+};
+
+/* ---------- printer + permit ---------- */
+let permitTm=null;
+cb$('cbPrint').onclick=()=>{
+ toast('🖨 PRINTING…');play('whirr');
+ const paper=document.createElement('div');paper.id='cbPaper';
+ paper.innerHTML='COUNCIL OF BUTTONS<br>FORM 0-B<br>──────────────<br>DOCUMENT: PERMIT TO PRESS BUTTONS<br>VALIDITY: 5 MINUTES<br>RENEWALS: unlimited<br>VALUE: none';
+ document.body.appendChild(paper);
+ setTimeout(()=>{paper.style.top='120px';play('whirr')},60);
+ setTimeout(()=>{paper.remove();
+  const pm=document.createElement('div');pm.id='cbPermit';
+  pm.innerHTML='📜 <b>PERMIT TO PRESS BUTTONS</b><br>valid: <span id="cbPermT">5:00</span><br><i>click to laminate (does nothing)</i>';
+  document.body.appendChild(pm);play('chime');bump(3);
+  const end=Date.now()+300000;
+  permitTm=setInterval(()=>{const s=Math.max(0,Math.floor((end-Date.now())/1000));
+   const el=cb$('cbPermT');if(!el){clearInterval(permitTm);return}
+   el.textContent=Math.floor(s/60)+':'+(s%60<10?'0':'')+s;
+   if(s<=0){clearInterval(permitTm);pm.remove();toast('📜 Your pressing permit has expired. Continue anyway.');play('sad')}},1000);
+  pm.onclick=()=>{toast('Laminated. It is now a laminated permission to do nothing.');play('giggle');bump(2)};
+ },2600);
+};
+
+/* ---------- store ---------- */
+cb$('cbStore').onclick=()=>{
+ dialog('🛒 BUTTON STORE',`Your balance: <b>${CB.wallet.toLocaleString()}</b> worthless points (1 point per press)<br><br>
+  <button class="chip" id="cbB0">Premium Nothing — 999</button>
+  <button class="chip" id="cbB1">Button Insurance — 300</button>
+  <button class="chip" id="cbB2">The Potato's Autograph — 50</button>
+  <button class="chip" id="cbB3">Solid Gold Button — 99,999</button><br><br>
+  <i style="opacity:.6">All sales final. All products conceptual.</i>`,
+  ['CLOSE'],()=>closeDialog());
+ const noCash=()=>{toast('Insufficient points. Press more buttons.');play('buzz')};
+ const B0=cb$('cbB0'),B1=cb$('cbB1'),B2=cb$('cbB2'),B3=cb$('cbB3');
+ if(B0)B0.onclick=()=>{if(CB.wallet<999){noCash();return}CB.wallet-=999;
+  dialog('RECEIPT','ITEM: <b>Premium Nothing</b><br>SHIPPING: instant<br>CONTENTS: nothing<br><br>It is exactly what you had before.',['lovely'],()=>closeDialog());play('fanfare');bump(4)};
+ if(B1)B1.onclick=()=>{if(CB.wallet<300){noCash();return}CB.wallet-=300;
+  toast('🛡 Insured. Covers 0 incidents.');play('chime');bump(4)};
+ if(B2)B2.onclick=()=>{if(CB.wallet<50){noCash();return}CB.wallet-=50;
+  const p=document.createElement('div');p.id='cbPotato';p.textContent='🥔';document.body.appendChild(p);
+  setTimeout(()=>p.remove(),4100);toast('🥔 The Potato signs. It is a root vegetable. It tried.');bump(4)};
+ if(B3)B3.onclick=()=>{play('sad');toast('You can\'t afford this. Nobody can. It is not for sale.')};
+};
+
+/* ---------- wallpaper ---------- */
+cb$('cbWall').onclick=()=>{
+ dialog('🖼 WALLPAPER SETTINGS','Purely aesthetic. The buttons have opinions about it.<br><br>
+  <button class="chip" id="cbW0">✦ Stars (default)</button>
+  <button class="chip" id="cbW1">🍂 Plaid</button>
+  <button class="chip" id="cbW2">☁ Clouds (drifting)</button>
+  <button class="chip" id="cbW3">🕳 The Void</button>',['CLOSE'],()=>closeDialog());
+ let wl=cb$('cbWallLayer');
+ if(!wl){wl=document.createElement('div');wl.id='cbWallLayer';room.insertBefore(wl,room.firstChild)}
+ const apply=bg=>{wl.style.background=bg;play('zoom');bump(2);
+  buttons.filter(b=>!b.gone).slice(0,3).forEach((b,i)=>setTimeout(()=>say(b,cbPick(['“ooh.”','“bold choice.”','“I preferred the void.”','“very… background.”']),2200),i*350))};
+ const W0=cb$('cbW0'),W1=cb$('cbW1'),W2=cb$('cbW2'),W3=cb$('cbW3');
+ if(W0)W0.onclick=()=>apply('');
+ if(W1)W1.onclick=()=>apply('repeating-linear-gradient(45deg,rgba(157,140,255,.07) 0 40px,transparent 40px 80px),repeating-linear-gradient(-45deg,rgba(240,143,181,.06) 0 40px,transparent 40px 80px)');
+ if(W2)W2.onclick=()=>apply('radial-gradient(300px 130px at 20% 30%,rgba(255,255,255,.10),transparent 70%),radial-gradient(360px 150px at 70% 60%,rgba(255,255,255,.08),transparent 70%),radial-gradient(260px 120px at 45% 80%,rgba(255,255,255,.07),transparent 70%)');
+ if(W3)W3.onclick=()=>apply('radial-gradient(600px 400px at 50% 50%,#000 0%,#050507 70%)');
+};
+
+/* ---------- the door ---------- */
+cb$('cbDoor').onclick=()=>{
+ play('boom');
+ const ov=document.createElement('div');ov.id='cbDoorOv';
+ ov.innerHTML='<div class="big">THE COUNCIL OF BUTTONS</div><div class="btns3">⬤⬤⬤</div><div class="tiny">BUILDING B</div><div class="tiny">(you are now in an identical room)</div>';
+ document.body.appendChild(ov);ov.style.display='flex';
+ requestAnimationFrame(()=>ov.style.opacity=1);
+ setTimeout(()=>{ov.style.opacity=0;setTimeout(()=>ov.remove(),650);
+  toast('🚪 It was the same room.');play('sad');
+  log('🚪 Someone used <b>THE DOOR</b>. It led here.');
+  unlock('door','WENT THROUGH THE DOOR — it led here');bump(5)},2800);
+};
+
+/* ---------- screensaver ---------- */
+let ssOn=false,ssIv=null,ssIdle=Date.now();
+['pointermove','pointerdown','keydown','wheel'].forEach(ev=>addEventListener(ev,()=>ssIdle=Date.now(),true));
+function showSS(){if(ssOn||!entered)return;ssOn=true;
+ const ov=document.createElement('div');ov.id='cbSS';
+ ov.innerHTML='<div id="cbSSLogo">⬤ THE COUNCIL IS THINKING…</div><div id="cbSSHint">move to disturb the Council</div>';
+ document.body.appendChild(ov);
+ const lg=cb$('cbSSLogo');let x=100,y=100,vx=2.4,vy=1.8;
+ ssIv=setInterval(()=>{const r=lg.getBoundingClientRect();
+  x+=vx;y+=vy;let hit=false;
+  if(x<0||x+r.width>innerWidth){vx=-vx;hit=true}
+  if(y<0||y+r.height>innerHeight-60){vy=-vy;hit=true}
+  if(hit){lg.style.filter=`hue-rotate(${cbRi(40,320)}deg)`;play('bonk')}
+  lg.style.left=x+'px';lg.style.top=y+'px'},28);
+ toast('📺 The Council is thinking. Do not disturb. (SAVER on)');}
+function hideSS(){if(!ssOn)return;ssOn=false;clearInterval(ssIv);
+ const ov=cb$('cbSS');if(ov)ov.remove();ssIdle=Date.now();lastAction=Date.now();}
+['pointermove','pointerdown','keydown','wheel'].forEach(ev=>addEventListener(ev,()=>{if(ssOn)hideSS()},true));
+cb$('cbSS').onclick=()=>{ssOn?hideSS():showSS()};
+setInterval(()=>{if(entered&&!ssOn&&!eventActive&&Date.now()-ssIdle>90000)showSS()},5000);
+
+/* ---------- cursor trail ---------- */
+let trailOn=CB.prefs.trail||false,lastTrail=0;
+const tb=cb$('cbTrail');tb.textContent='👆 TRAIL: '+(trailOn?'ON':'OFF');
+tb.onclick=()=>{trailOn=!trailOn;CB.prefs.trail=trailOn;cbSaveP();tb.textContent='👆 TRAIL: '+(trailOn?'ON':'OFF');
+ play('pop');if(trailOn)toast('Trail enabled. Buttons may comment.')};
+addEventListener('pointermove',e=>{
+ if(!trailOn||!entered)return;const t=performance.now();
+ if(t-lastTrail<45)return;lastTrail=t;
+ const d=document.createElement('div');d.className='cbDot';
+ d.style.left=(e.clientX-3)+'px';d.style.top=(e.clientY-3)+'px';
+ document.body.appendChild(d);setTimeout(()=>d.remove(),580);
+},{passive:true});
+
+/* ---------- the stalker ---------- */
+(function(){
+ const el=document.createElement('div');el.className='btn';el.id='cbStalker';el.dataset.id='901';
+ const core=document.createElement('div');core.className='core';core.textContent='…';
+ el.appendChild(core);
+ const edge=cbRi(0,3);
+ let p={x:edge===0?120:edge===1?W-120:cbRnd(300,W-300),y:edge<2?cbRnd(300,H-300):edge===2?120:H-120};
+ el.style.left=(p.x-23)+'px';el.style.top=(p.y-23)+'px';
+ room.appendChild(el);
+ let corner=0,caught=false,dodgeCd=0;
+ el.addEventListener('pointerdown',e=>{e.stopPropagation();
+  if(caught)return;
+  const w=screenToWorld(e.clientX,e.clientY);const a=Math.atan2(w.y-p.y,w.x-p.x)||cbRnd(0,6.28);
+  p.x=cbClamp(p.x+Math.cos(a)*220,80,W-80);p.y=cbClamp(p.y+Math.sin(a)*220,80,H-80);
+  el.style.left=(p.x-23)+'px';el.style.top=(p.y-23)+'px';
+  play('squeak');floatText(p.x,p.y-40,'nope','#ff9aa8',14);});
+ el.addEventListener('click',e=>{e.stopPropagation();
+  if(!caught)return;
+  play('giggle');floatText(p.x,p.y-50,'…fine. you win.','#ffd76a',16);bump(6);});
+ el.addEventListener('mouseenter',()=>{tip.style.display='block';
+  tip.innerHTML=caught?'<b>#901 · THE CAUGHT ONE</b><br><span class="fl">it has accepted its fate.</span>'
+   :'<b>#901 · ██████</b><br><span class="fl">you can\'t click it. nobody can.</span>'});
+ el.addEventListener('mouseout',()=>tip.style.display='none');
+ const iv=setInterval(()=>{
+  if(!entered)return;
+  if(caught){clearInterval(iv);return}
+  const w=screenToWorld(cursor.sx,cursor.sy);
+  const dx=w.x-p.x,dy=w.y-p.y,d=Math.hypot(dx,dy)||1;
+  const t=performance.now();
+  if(d<55&&t>dodgeCd){dodgeCd=t+650;
+   p.x=cbClamp(p.x-dx/d*16,80,W-80);p.y=cbClamp(p.y-dy/d*16,80,H-80);
+  }else if(d>=55){
+   p.x=cbClamp(p.x+dx/d*.5,80,W-80);p.y=cbClamp(p.y+dy/d*.5,80,H-80);
+  }
+  corner=d<70?corner+.05:Math.max(0,corner-.1);
+  if(corner>3){caught=true;
+   el.style.transition='opacity .4s';el.style.opacity=1;
+   core.textContent='🫡';core.style.background='radial-gradient(circle at 34% 30%,#3a5a3a,#122012 75%)';
+   core.style.borderColor='#4a7a4a';
+   play('fanfare');confetti(p.x,p.y,60);
+   floatText(p.x,p.y-60,'THE STALKER SURRENDERS','#ffd76a',16);
+   log('<b>#901</b> was cornered and caught. It is at peace now.');
+   unlock('stalker','CAUGHT THE STALKER — you are relentless');
+   bump(8);return}
+  el.style.left=(p.x-23)+'px';el.style.top=(p.y-23)+'px';
+  el.style.opacity=d<120?.45:.85;
+ },50);
+})();
+
+/* ---------- guided tour ---------- */
+(function poll(){if(!entered){setTimeout(poll,800);return}
+ setTimeout(()=>{
+  if(CB.prefs.tourDone)return;
+  dialog('👋 WELCOME, NEW VISITOR',
+   `This is <b>THE COUNCIL OF BUTTONS</b>. It is completely useless. That is the entire point.<br><br>
+    A quick 3-step tour is available. It accomplishes nothing, efficiently.`,
+   ['TAKE THE TOUR','EXPLORE ALONE'],[i=>{
+    closeDialog();CB.prefs.tourDone=true;cbSaveP();
+    if(i===1){toast('As you wish.');return}
+    dialog('TOUR 1/3 — THE COUNCIL','Every button has a name, a personality and a mood.<br>They gossip. They panic. One is a potato.',['NEXT'],()=>{
+     closeDialog();panTo(byId[17].x,byId[17].y);
+     setTimeout(()=>dialog('TOUR 2/3 — BUTTONS TALK','Press <b>▶ DEMO MODE</b> (top bar) to watch a chain reaction.<br>Or just click things — chains happen by accident too.',['NEXT'],()=>{
+      closeDialog();panTo(W/2,H/2);
+      setTimeout(()=>dialog('TOUR 3/3 — JOIN THEM','Open the <b>📷 PHOTO BOOTH</b> and your face joins the Council as a floating member.<br>Drag it. Fling it. It judges back.',['FINISH'],()=>{
+       closeDialog();toast('🎓 Tour complete. Purpose still not found.');play('fanfare');bump(5);
+       unlock('tourist','COMPLETED THE TOUR — guided nothingness')})},200)},200)});
+   }]);
+ },2500);
+})();
+
+/* ---------- intercept disabled buttons (better feedback) ---------- */
+room.addEventListener('click',e=>{
+ const el=e.target.closest('.btn');if(!el)return;
+ const b=byId[el.dataset.id];
+ if(b&&b.disabled){e.stopPropagation();play('bonk');
+  floatText(b.x,b.y-b.size/2-8,cbPick(['(retired)','(no)','(it\'s resting)','(don\'t)']),'#9aa0a6',12);
+  bump(1)}
+},true);
+
+})();
+</script>
+
+<script>
+/* ================= COUNCIL v4 PATCH =================
+   Coffee Machine · Lottery · Terms & Conditions · Suggestion Box
+   Useless ATM · Fire Drill · Karaoke Night · The Cloud
+   Flashlight Mode · Slow-Mo · The Hotline */
+(function(){
+"use strict";
+if(window.__CB_V4)return; window.__CB_V4=1;
+
+const c4$=id=>document.getElementById(id);
+const c4Pick=a=>a[Math.floor(Math.random()*a.length)];
+const c4Ri=(a,b)=>Math.floor(a+Math.random()*(b-a+1));
+const c4Clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+const bump4=n=>{const m=c4$('cbMeter');if(!m)return;
+ const cur=parseFloat((m.textContent.match(/([\d.]+)/)||[0,0])[1]);
+ const v=c4Clamp(cur+n,0,100);
+ m.textContent='Pointlessness: '+Math.round(v)+'%';m.classList.toggle('hot',v>=85)};
+
+/* ---------- CSS ---------- */
+const css=`
+#c4Light{position:fixed;inset:0;z-index:156;pointer-events:none;display:none;
+ background:radial-gradient(circle 150px at var(--fx,50%) var(--fy,40%),transparent 0 120px,rgba(0,0,0,.93) 230px)}
+#c4Cloud{position:absolute;z-index:46;pointer-events:none;font-size:90px;line-height:1;
+ filter:drop-shadow(0 8px 14px rgba(0,0,0,.4))}
+body.c4slomo .core{animation-duration:6s!important;transition-duration:.6s!important}
+body.c4slomo .lift{transition-duration:.45s!important}
+#c4TandC{max-height:170px;overflow:auto;font-size:10px;font-family:"Courier New",monospace;opacity:.85;
+ line-height:1.6;border:1px solid rgba(255,255,255,.15);border-radius:6px;padding:8px;background:rgba(0,0,0,.25)}
+#c4LotRow{display:flex;gap:5px;justify-content:center;flex-wrap:wrap;margin:10px 0}
+#c4LotRow .chip{min-width:34px;text-align:center}
+#c4LotRow .chip.sel{background:#9d8cff;color:#14141a;border-color:#c9b8ff}
+#c4Lres{min-height:40px;font-family:"Courier New",monospace;font-size:12px;text-align:center;color:#ffd76a}
+`;
+const st=document.createElement('style');st.textContent=css;document.head.appendChild(st);
+
+/* ---------- dock additions ---------- */
+const dock=c4$('cbDock');
+['☕ COFFEE','🎰 LOTTERY','📜 T&C','📮 SUGGEST','🏧 ATM','🐌 SLOW-MO','🔦 LIGHT'].forEach(t=>{
+ const d=document.createElement('div');d.className='cbChip';d.textContent=t;
+ d.dataset.c4=t;dock.insertBefore(d,dock.querySelector('.cbSep'));});
+const chip=t=>[...dock.children].find(d=>d.dataset.c4===t);
+
+/* ---------- ☕ COFFEE ---------- */
+let brewBusy=false;
+chip('☕ COFFEE').onclick=()=>{
+ if(brewBusy)return;brewBusy=true;play('whirr');toast('☕ Brewing…');bump4(2);
+ const bar=document.createElement('div');
+ bar.style.cssText='position:fixed;left:50%;top:90px;transform:translateX(-50%);width:220px;z-index:400;background:rgba(12,12,18,.95);padding:10px;border:1px solid rgba(255,255,255,.2);border-radius:8px';
+ bar.innerHTML='<i class="cbBar" id="c4Brew" style="transition:width 4s"></i><div style="font-family:\'Courier New\',monospace;font-size:10px;margin-top:5px;color:#e8e4da">percolating importance…</div>';
+ document.body.appendChild(bar);
+ setTimeout(()=>{const b=c4$('c4Brew');if(b)b.style.width='100%'},50);
+ setTimeout(()=>{bar.remove();play('plop');
+  toast('☕ Coffee is ready. It is decaf. It was always decaf.');bump4(3);
+  log('☕ The machine served <b>decaf</b>. The Council remains calm, unfortunately.');
+  const jit=buttons.filter(b=>!b.gone&&!b.disabled);
+  for(let i=0;i<3;i++){const b=c4Pick(jit);
+   b.core.classList.add('a-shiver');
+   say(b,c4Pick(['“I can taste time now.”','“caffeine?? at a TIME like this?”','“jittery is my natural state.”','“I regret nothing and everything.”']),2600);
+   setTimeout(()=>b.core.classList.remove('a-shiver'),8000);}
+  unlock('caffeine','ORDERED COFFEE — it was decaf');
+ },4100);
+};
+
+/* ---------- 🎰 LOTTERY ---------- */
+let plays=0;
+chip('🎰 LOTTERY').onclick=()=>{
+ dialog('🎰 BUTTON LOTTERY','Pick a number. The Council picked a different one first.<div id="c4LotRow">'+
+  [1,2,3,4,5,6,7,8,9].map(n=>`<button class="chip" data-n="${n}">${n}</button>`).join('')+
+  '</div><div id="c4Lres">odds of winning: 1 in “no”</div>',['CLOSE'],()=>closeDialog());
+ let picked=null,done=false;
+ const row=c4$('c4LotRow'),res=c4$('c4Lres');
+ row.querySelectorAll('.chip').forEach(c=>c.onclick=()=>{
+  if(done||picked)return;picked=+c.dataset.n;c.classList.add('sel');
+  res.textContent='drawing…';play('whirr');
+  let k=0;const chips=[...row.querySelectorAll('.chip')];
+  const iv=setInterval(()=>{
+   chips.forEach(x=>x.classList.remove('sel'));
+   chips[c4Ri(0,8)].classList.add('sel');
+   if(++k>22){clearInterval(iv);
+    let win=c4Ri(1,9);if(win===picked)win=picked%9+1;
+    chips.forEach(x=>x.classList.toggle('sel',+x.dataset.n===win));
+    done=true;plays++;
+    if(Math.random()<.08){play('victory');confetti(W/2,H/2,100);
+     res.textContent=`WINNER: ${win}. Your pick: ${picked}. JACKPOT: 1 point (not redeemable anywhere).`;bump4(4)}
+    else{play('sad');
+     res.textContent=`WINNER: ${win}. Your pick: ${picked}. You win: a coupon for the next lottery.`;
+     setTimeout(()=>toast('🎟 Coupon redeemed. It was for this lottery.'),2500);}
+    if(plays>=5)unlock('gambler','PLAYED THE LOTTERY 5 TIMES — the house always wins, so does nobody');
+   }},80);
+ });
+};
+
+/* ---------- 📜 TERMS & CONDITIONS ---------- */
+chip('📜 T&C').onclick=()=>{
+ const P=['1. By reading this, you agree to have read this.','2. Buttons are provided “as is”, which is to say: round.',
+  '3. The Council guarantees nothing, especially this guarantee.','4. Clause 4 intentionally left blank.',
+  '5. All disputes go to the Subcommittee on Disputes (room: none).','6. By agreeing, you agree that “agreeing” means nothing.',
+  '7. This document self-deletes from your memory shortly after scrolling.','8. The potato reserves the right to remain a potato.',
+  '9. Continued pressing constitutes enthusiastic consent to continue pressing.','10. Thank you for reading 10 of 999 sections.'];
+ let strikes=0;
+ dialog('📜 TERMS & CONDITIONS (999 sections, 10 shown)',`<div id="c4TandC">${P.map(p=>'§ '+p).join('<br><br>')}</div>
+  <br><i style="opacity:.6;font-size:11px">scrolling to the end is mandatory (the end is not shown)</i>`,
+  ['I AGREE','I DECLINE'],[i=>{
+   if(i===1){closeDialog();toast('Declined. You may keep doing everything you were already allowed to do.');play('chime');return}
+   strikes++;
+   if(strikes===1){toast('Scrolling to the end is mandatory.');play('buzz');return}
+   if(strikes===2){toast('The AGREE button is on strike. Try again.');play('squeak');return}
+   closeDialog();play('fanfare');confetti(W/2,H/2,60);
+   toast('You agreed to nothing. It was void anyway. Everyone is proud.');
+   unlock('legal','AGREED TO THE TERMS — all 999 of nothing');bump4(4);
+  }]);
+};
+
+/* ---------- 📮 SUGGESTION BOX ---------- */
+chip('📮 SUGGEST').onclick=()=>{
+ dialog('📮 SUGGESTION BOX','Your suggestion will be handled by the appropriate nobody.<br><br>'+
+  '<input id="c4SIn" placeholder="your suggestion…" style="width:100%;font-family:\'Courier New\',monospace;font-size:12px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.2);color:#e8e4da;border-radius:6px;padding:8px;outline:none">',
+  ['SUBMIT','NEVER MIND'],[i=>{
+   if(i===1){closeDialog();return}
+   const inp=c4$('c4SIn');const v=(inp&&inp.value.trim())||'';
+   closeDialog();
+   const echo=v?v.split('').map(ch=>Math.random()<.08?String.fromCharCode(ch.charCodeAt(0)+1):ch).join(''):v;
+   setTimeout(()=>{play('chime');
+    toast(c4Pick(['“Filed under: later.”','“Forwarded to the Subcommittee on Suggestions (disbanded 2019).”','“Read aloud at the last meeting. Nobody was present.”','“Framed. Hung in the hallway of nothing.”','“Acknowledged. Not accepted. Not rejected. Absorbed.”']));
+    if(echo)toast('📜 On file: “'+echo+'”',3000);
+    log('📮 A suggestion was submitted. It was <b>processed</b>.');
+    unlock('civic','SUBMITTED A SUGGESTION — democracy-ish');bump4(3);},400);
+  }]);
+ setTimeout(()=>{const el=c4$('c4SIn');if(el)el.focus()},100);
+};
+
+/* ---------- 🏧 ATM ---------- */
+chip('🏧 ATM').onclick=()=>{
+ dialog('🏧 USELESS ATM','Balance: <b>unknown</b>. This machine does not check.<br>Withdrawals are encouraged.',
+  ['WITHDRAW 50','WITHDRAW EVERYTHING'],[i=>{
+   closeDialog();
+   setTimeout(()=>{
+    if(i===0){dialog('🧾 RECEIPT','TRANSACTION COMPLETE<br>──────────────<br>Amount: 50<br>New balance: <b>-50</b><br>Overdraft fee: 1 (charged)<br>Fee charged to: you<br>Total: -51<br><br><i>The money never existed. The debt is real.</i>',['KEEP THE DEBT'],()=>closeDialog());
+     play('sad');unlock('debt','WITHDREW MONEY THAT DID NOT EXIST');bump4(3)}
+    else{dialog('🧾 RECEIPT','WITHDRAW EVERYTHING<br>──────────────<br>Everything was audited.<br>Everything was: <b>nothing</b>.<br>Net gain: nothing.<br>Net loss: the will to ask.',['WOW'],()=>closeDialog());
+     play('trombone');bump4(2)}
+   },200);
+  }]);
+};
+
+/* ---------- 🔦 FLASHLIGHT ---------- */
+const fl=document.createElement('div');fl.id='c4Light';document.body.appendChild(fl);
+let lightOn=false;
+chip('🔦 LIGHT').onclick=()=>{
+ lightOn=!lightOn;fl.style.display=lightOn?'block':'none';
+ play(lightOn?'zoom':'plop');bump4(2);
+ toast(lightOn?'🔦 Power outage. The Council recommends clicking blindly.':'Lights back on. Nothing changed while they were off.');
+};
+addEventListener('pointermove',e=>{if(!lightOn)return;
+ fl.style.setProperty('--fx',e.clientX+'px');fl.style.setProperty('--fy',e.clientY+'px')},{passive:true});
+
+/* ---------- 🐌 SLOW-MO ---------- */
+chip('🐌 SLOW-MO').onclick=()=>{
+ document.body.classList.add('c4slomo');play('zoom');bump4(2);
+ toast('🐌 SLOW MODE. Even the potato noticed.');
+ setTimeout(()=>{document.body.classList.remove('c4slomo');toast('Time resumes. It brought snacks.')},20000);
+};
+
+/* ---------- 📞 THE HOTLINE ---------- */
+let phoneUp=false;
+setInterval(()=>{
+ if(!entered||phoneUp||eventActive||Math.random()>.35)return;
+ phoneUp=true;play('siren');
+ setTimeout(()=>tone({f:880,t:.14,v:.15}),250);
+ toast('📞 The phone is ringing. Nobody knows where it is.');
+ const ph=document.createElement('div');ph.className='cbChip';ph.id='c4Phone';ph.textContent='📞 ANSWER';
+ dock.appendChild(ph);
+ const gone=()=>{phoneUp=false;const p=c4$('c4Phone');if(p)p.remove()};
+ ph.onclick=()=>{gone();
+  dialog('📞 THE HOTLINE',`<i>“${c4Pick(['Wrong department.','This is the Council\u2019s other Council.','Have you tried pressing fewer buttons?','You have reached the office of Nobody. Leave a message after the nothing.','No comment.” said everything, everywhere.'])}”</i>`,
+   ['HANG UP'],()=>closeDialog());
+  setTimeout(()=>{if(c4$('dialogBack').style.display==='flex')closeDialog()},6000);
+  unlock('operator','ANSWERED THE HOTLINE — wrong number, right attitude');bump4(3);};
+ setTimeout(()=>{if(phoneUp){gone();toast('📞 The ringing stopped. Good.')}},12000);
+},90000);
+
+/* ---------- new EVENTS wired into the existing scheduler ---------- */
+function c4Drill(){
+ beginEv();play('siren');toast('🚨 FIRE DRILL. LINE UP AT THE CORNER.');
+ const corner={x:W-320,y:H-320};
+ const act=buttons.filter(b=>!b.gone&&!b.disabled);
+ act.slice(0,70).forEach((b,i)=>setTimeout(()=>{b.tx=(corner.x-b.x)*.5;b.ty=(corner.y-b.y)*.5;activeAnim.add(b)},i*35));
+ setTimeout(()=>{
+  toast('🚨 Drill complete. Nothing was on fire. Attendance: perfect.');
+  log('🚨 <b>FIRE DRILL</b>. Everyone survived. Nothing burned. Again.');bump4(4);
+  act.slice(0,70).forEach((b,i)=>setTimeout(()=>{b.tx=0;b.ty=0},i*35));
+ },4200);
+}
+function c4Karaoke(){
+ beginEv();play('chime');toast('🎤 KARAOKE NIGHT (unauthorized)');
+ const LYR=['🎵 pressing in the raaain 🎵','🎵 never gonna press you up 🎵','🎵 hello from the other siiide (of the panel) 🎵','🎵 potato, potato, potaaato 🎵','🎵 we will, we will, NOT PRESS 🎵'];
+ const sing=buttons.filter(b=>!b.gone&&!b.disabled);
+ for(let i=0;i<3;i++){
+  const b=c4Pick(sing);
+  setTimeout(()=>{say(b,c4Pick(LYR),2000);
+   tone({f:c4Ri(260,520),f2:c4Ri(180,640),type:'sawtooth',t:.6,v:.1});
+   tone({f:c4Ri(300,560),type:'square',t:.5,v:.05,when:.1});},i*2300);
+ }
+ setTimeout(()=>log('🎤 Karaoke night concluded. Nobody clapped. The mic was a button.'),7200);
+}
+function c4Cloud(){
+ beginEv();play('whoosh');toast('☁ A cloud has entered the chamber.');
+ const cl=document.createElement('div');cl.id='c4Cloud';cl.textContent='☁️';
+ cl.style.left='-160px';cl.style.top=(300+rnd(0,1300))+'px';
+ room.appendChild(cl);
+ let x=-160;
+ const move=setInterval(()=>{x+=6;cl.style.left=x+'px';},30);
+ const rain=setInterval(()=>{
+  addPart({x:x+40+rnd(0,90),y:parseFloat(cl.style.top)+70,vx:0,vy:260,g:0,dur:.7,size:2.5,color:'rgba(140,190,255,.8)'});
+ },90);
+ const wet=setInterval(()=>{
+  buttons.forEach(b=>{if(b.gone||b.disabled)return;
+   if(Math.abs(b.x-(x+60))<90&&Math.abs(b.y-parseFloat(cl.style.top))<220&&Math.random()<.25){
+    b.core.style.filter='saturate(.4) brightness(.8) hue-rotate(180deg)';
+    if(Math.random()<.3)say(b,'“moist.”',1500);
+    setTimeout(()=>applyCoreRefresh(b),3000);}});
+ },350);
+ setTimeout(()=>{clearInterval(move);clearInterval(rain);clearInterval(wet);
+  cl.remove();toast('☁ The cloud has left. It did not explain itself.');bump4(3);},20000);
+}
+EVENTS.push(c4Drill,c4Karaoke,c4Cloud);
+
+})();
+</script>
+</body>
+</html>
