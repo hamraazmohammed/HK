@@ -82,7 +82,8 @@ You have accomplished nothing popup
  CURSOR ──────┘    scheduler, budget) └→ DOM BUTTON LAYER (spring physics, moods,
                                           personalities, localStorage persistence)
 
- ![Uploading ChatGPT Image Sep 12, 2026, 03_58_45 AM.png…]()
+<img width="1224" height="1285" alt="councilofbuttons flowchart" src="https://github.com/user-attachments/assets/7d3c1c59-e150-440c-b6c1-a7cf08e3df15" />
+
                                          
 
 
